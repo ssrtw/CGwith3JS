@@ -2,12 +2,27 @@
 <html>
 
 <head>
-
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 
 <body>
+    <div class="container">
+        <nav class="navbar navbar-light bg-light">
+            <span class="navbar-brand">
+                HW1-time-based animation
+            </span>
+        </nav>
+    </div>
+    <div id="canvas"></div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
-    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script>
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })()
@@ -15,6 +30,7 @@
         //指針,背板
         var pointer, backplane
         var angle = 0
+        var pretime = Date.now()
         init()
         animate()
 
@@ -27,7 +43,7 @@
             renderer = new THREE.WebGLRenderer()
             renderer.setSize(width, height)
             renderer.setClearColor('gray')
-            document.body.appendChild(renderer.domElement)
+            $("#canvas").append(renderer.domElement)
 
             camera = new THREE.PerspectiveCamera(
                 50,
@@ -76,9 +92,15 @@
             requestAnimationFrame(animate);
         }
         function turn() {
-            //原本是Math.PI * 2 / 60 / 60
-            //計算加快
-            angle += Math.PI / 1800
+            //2PI/60秒/FPS60
+            //Math.PI * 2 / 60 / 60
+            //改以時間差做角度計算
+            //1min=1*60sec=60*1000ms=60000ms
+            //   PI*2          目前要轉的角度
+            //----------  =  -----------------
+            // 60000毫秒      每次animate時間差
+            var now = Date.now()
+            var angle = Math.PI * 2 / 60000 * (now - pretime)
             pointer.rotation.z = -angle;
         }
     </script>
