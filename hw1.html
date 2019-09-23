@@ -2,93 +2,116 @@
 <html>
 
 <head>
+    <title>HW1-time-based animation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <style>
         #canvas {
             width: 100%;
             height: 100%;
         }
+
+        nav {
+            position: absolute;
+        }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <nav class="navbar navbar-light bg-light">
-            <span class="navbar-brand">
-                HW1-time-based animation
-            </span>
-        </nav>
-    </div>
+    <nav class="navbar navbar-light bg-light">
+        <span class="navbar-brand">
+            HW1-time-based animation
+        </span>
+    </nav>
     <div id="canvas"></div>
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
     <script>
         //檢查FPS
-        javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })()
-        var scene, renderer, camera
+        javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
+        var scene, renderer, camera;
         //指針,背板
-        var pointer, backplane
-        var angle = 0
-        var pretime = Date.now()
-        init()
-        animate()
+        var pointer, backplane;
+        //啟動時間
+        var preTime = Date.now();
+        //紀錄上次暫停時的角度
+        var preAngle = 0;
+        //鍵盤事件
+        var keyboard = new KeyboardState();
+        var isturn = true;
+        init();
+        animate();
 
         function init() {
-            scene = new THREE.Scene()
+            scene = new THREE.Scene();
 
-            var width = window.innerWidth
-            var height = window.innerHeight
+            var width = window.innerWidth;
+            var height = window.innerHeight;
 
-            renderer = new THREE.WebGLRenderer()
-            renderer.setSize(width, height)
-            renderer.setClearColor('gray')
-            $("#canvas").append(renderer.domElement)
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(width, height);
+            renderer.setClearColor('gray');
+            document.body.append(renderer.domElement);
 
             camera = new THREE.PerspectiveCamera(
                 50,
                 width / height,
                 10,
                 100
-            )
+            );
             //看著場景的中心點(0,0,0)
-            camera.lookAt(scene.position)
+            camera.lookAt(scene.position);
             //擺放位置
-            camera.position.set(0, 0, 50)
+            camera.position.set(0, 0, 50);
 
             //背板
-            backplane = new THREE.Mesh(new THREE.CircleGeometry(20, 32),
+            backplane = new THREE.Mesh(new THREE.CircleGeometry(20, 64),
                 new THREE.MeshBasicMaterial({
                     color: 0xDADDDD
-                }))
-            scene.add(backplane)
+                }));
+            scene.add(backplane);
 
             //完整指針
-            pointer = new THREE.Group()
+            pointer = new THREE.Group();
             //指針柄
             // var handle=new THREE.BoxGeometry(1,10,1)//x,y,z
             var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 0.5),
                 new THREE.MeshBasicMaterial({
                     color: "gray"
-                }))
+                }));
             handle.position.set(0, 5, 0.5);
-            pointer.add(handle)
+            pointer.add(handle);
             //箭頭
-            var arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 5, 20),
+            var arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 5, 64),
                 new THREE.MeshBasicMaterial({
                     color: 0x727D82
-                }))
+                }));
             //10+2.5
             arrow.position.set(0, 12.5, 0.5);
             //指針箭頭
-            pointer.add(arrow)
+            pointer.add(arrow);
             //完整指針放到場景
-            scene.add(pointer)
+            scene.add(pointer);
         }
-
         function animate() {
-            renderer.render(scene, camera)
-            turn()
+            //鍵盤事件
+            keyboard.update()
+            if (keyboard.down("Z")) {
+                if (!isturn) {
+                    //恢復轉動時，要將目前的時間當作起點時間
+                    preTime = Date.now();
+                } else {
+                    //取得暫停當下的角度，在重新啟動時把這個角度算進去
+                    preAngle = pointer.rotation.z;
+                }
+                isturn = !isturn;
+            }
+            //渲染畫面
+            renderer.render(scene, camera);
+            //轉動
+            if (isturn) { turn(); }
             requestAnimationFrame(animate);
         }
         function turn() {
@@ -99,8 +122,9 @@
             //   PI*2          目前要轉的角度
             //----------  =  -----------------
             // 60000毫秒      每次animate時間差
-            var now = Date.now()
-            var angle = Math.PI * 2 / 60000 * (now - pretime)
+            var now = Date.now();
+            //補上preAngle的角度才吻合暫停後再開始的樣子
+            var angle = Math.PI * 2 / 60000 * (now - preTime) - preAngle;
             pointer.rotation.z = -angle;
         }
     </script>
