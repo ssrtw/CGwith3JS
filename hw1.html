@@ -22,8 +22,8 @@
         <span class="navbar-brand">
             HW1-time-based animation
         </span>
+        <button id="turnbtn" class="btn btn-primary">Toggle turn</button>
     </nav>
-    <div id="canvas"></div>
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
@@ -52,7 +52,7 @@
 
             renderer = new THREE.WebGLRenderer();
             renderer.setSize(width, height);
-            renderer.setClearColor('gray');
+            renderer.setClearColor('darkgray');
             document.body.append(renderer.domElement);
 
             camera = new THREE.PerspectiveCamera(
@@ -127,6 +127,18 @@
             var angle = Math.PI * 2 / 60000 * (now - preTime) - preAngle;
             pointer.rotation.z = -angle;
         }
+
+        //這邊如同按下Z鍵一樣的做法
+        $("#turnbtn").click(function () {
+            if (!isturn) {
+                //恢復轉動時，要將目前的時間當作起點時間
+                preTime = Date.now();
+            } else {
+                //取得暫停當下的角度，在重新啟動時把這個角度算進去
+                preAngle = pointer.rotation.z;
+            }
+            isturn = !isturn;
+        })
     </script>
 </body>
 
