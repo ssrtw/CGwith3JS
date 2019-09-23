@@ -9,21 +9,82 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script>
+        //檢查FPS
+        javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })()
         var scene, renderer, camera
-        var pointer
+        //指針,背板
+        var pointer, backplane
+        var angle = 0
+        init()
+        animate()
+
         function init() {
             scene = new THREE.Scene()
 
-            var width=window.innerWidth
-            var height=window.innerHeight
+            var width = window.innerWidth
+            var height = window.innerHeight
 
-            renderer = new THREE.WebGLrenderer()
-            renderer.setSize(width,height)
+            var grid = new THREE.GridHelper(100, 5, 'red', 'white')
+            scene.add(grid)
+            renderer = new THREE.WebGLRenderer()
+            renderer.setSize(width, height)
             renderer.setClearColor('gray')
             document.body.appendChild(renderer.domElement)
 
-            
+            camera = new THREE.PerspectiveCamera(
+                50,
+                width / height,
+                10,
+                100
+            )
+            //看著中間
+            camera.lookAt(scene)
+            //擺放位置
+            camera.position.set(0, 0, 50)
 
+            //contorl
+            controls = new THREE.OrbitControls(camera, renderer.domElement)
+
+            //背板
+            backplane = new THREE.Mesh(new THREE.CircleGeometry(20, 32),
+                new THREE.MeshBasicMaterial({
+                    color: 0xDADDDD
+                }))
+            scene.add(backplane)
+
+            //完整指針
+            pointer = new THREE.Group()
+            //指針柄
+            // var handle=new THREE.BoxGeometry(1,10,1)//x,y,z
+            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 0.5),
+                new THREE.MeshBasicMaterial({
+                    color: "gray"
+                }))
+            handle.position.set(0, 5, 0.5);
+            pointer.add(handle)
+            //箭頭
+            var arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 5, 20),
+                new THREE.MeshBasicMaterial({
+                    color: 0x727D82
+                }))
+            //10+2.5
+            arrow.position.set(0, 12.5, 0.5);
+            //指針箭頭
+            pointer.add(arrow)
+            //完整指針放到場景
+            scene.add(pointer)
+        }
+
+        function animate() {
+            renderer.render(scene, camera)
+            turn()
+            requestAnimationFrame(animate);
+        }
+        function turn() {
+            //原本是Math.PI * 2 / 60 / 60
+            //計算加快
+            angle += Math.PI / 1800
+            pointer.rotation.z = -angle;
         }
     </script>
 </body>
