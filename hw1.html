@@ -7,7 +7,7 @@
 
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
-    <!-- <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script> -->
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script>
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })()
@@ -41,6 +41,9 @@
             camera.lookAt(scene)
             //擺放位置
             camera.position.set(0, 0, 50)
+
+            //contorl
+            controls = new THREE.OrbitControls(camera, renderer.domElement)
 
             //背板
             backplane = new THREE.Mesh(new THREE.CircleGeometry(20, 32),
