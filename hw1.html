@@ -24,8 +24,6 @@
             var width = window.innerWidth
             var height = window.innerHeight
 
-            var grid = new THREE.GridHelper(100, 5, 'red', 'white')
-            scene.add(grid)
             renderer = new THREE.WebGLRenderer()
             renderer.setSize(width, height)
             renderer.setClearColor('gray')
@@ -37,13 +35,10 @@
                 10,
                 100
             )
-            //看著中間
-            camera.lookAt(scene)
+            //看著場景的中心點(0,0,0)
+            camera.lookAt(scene.position)
             //擺放位置
             camera.position.set(0, 0, 50)
-
-            //contorl
-            controls = new THREE.OrbitControls(camera, renderer.domElement)
 
             //背板
             backplane = new THREE.Mesh(new THREE.CircleGeometry(20, 32),
