@@ -3,26 +3,44 @@
 
 <head>
     <title>HW1-time-based animation</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta charset="utf-8">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="style.css" rel="stylesheet">
     <style>
         #canvas {
-            padding-left: 0;
-            padding-right: 0;
+            padding: 25px 0;
             margin-left: auto;
             margin-right: auto;
             display: block;
-            width: 800px;
+            width: 600px;
+        }
+
+        /* 增加button間距 */
+        #navbtn button {
+            margin: 0 10px;
         }
     </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-light bg-light">
-        <span class="navbar-brand">
-            HW1-time-based animation
-        </span>
-        <button id="turnbtn" class="btn btn-primary">Toggle turn</button>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand">Time-based animation</span>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                </ul>
+            </div>
+            <span class="text-white nav-text">按Z鍵可暫停/轉動</span>
+            <div id="navbtn">
+                <button id="stylebtn" class="btn btn-warning">扇形</button>
+                <button id="turnbtn" class="btn btn-primary">暫停</button>
+                <button id="modebtn" class="btn btn-info">連續</button>
+                <button id="calcbtn" class="btn btn-success">時間運算</button>
+            </div>
+        </div>
     </nav>
     <div id="canvas"></div>
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
@@ -32,16 +50,26 @@
     <script>
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
+        //場景、渲染器、相機
         var scene, renderer, camera;
-        //指針,背板
-        var pointer, backplane;
-        //啟動時間
+        //指針,背板,扇形,轉動軸
+        var pointer, backplane, circle, bearing;
+        //啟動前一次的時間點
         var preTime = Date.now();
         //紀錄上次暫停時的角度
         var preAngle = 0;
         //鍵盤事件
         var keyboard = new KeyboardState();
-        var isturn = true;
+        /*
+            是否要轉動；
+            選擇用什麼方式運作,0是連續,1是跳動；
+            計算方式,0是時間,1是FPS；
+            扇形或指針,0扇形,1指針；
+        */
+        var isTurn = false, mode = 0, calc = 0, style = 0;
+        //扇形角度
+        var circleAngle = Math.PI / 2;
+
         init();
         animate();
 
@@ -50,8 +78,8 @@
 
             // var width = window.innerWidth;
             // var height = window.innerHeight;
-            var width = 800;
-            var height = 600;
+            var width = 600;
+            var height = 450;
             renderer = new THREE.WebGLRenderer();
             renderer.setSize(width, height);
             renderer.setClearColor('darkgray');
@@ -61,7 +89,7 @@
                 50,
                 width / height,
                 10,
-                100
+                1000
             );
             //看著場景的中心點(0,0,0)
             camera.lookAt(scene.position);
@@ -75,11 +103,19 @@
                 }));
             scene.add(backplane);
 
+            //做個轉動軸
+            bearing = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 3, 48),
+                new THREE.MeshBasicMaterial({
+                    color: 0x000000
+                }));
+            bearing.rotation.x += Math.PI / 2;
+            scene.add(bearing);
+
             //完整指針
             pointer = new THREE.Group();
             //指針柄
             // var handle=new THREE.BoxGeometry(1,10,1)//x,y,z
-            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 0.5),
+            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, 0.5),
                 new THREE.MeshBasicMaterial({
                     color: "gray"
                 }));
@@ -96,50 +132,210 @@
             pointer.add(arrow);
             //完整指針放到場景
             scene.add(pointer);
+            //先不顯示背板、指針跟轉動軸
+            bearing.visible = false;
+            backplane.visible = false;
+            pointer.visible = false;
         }
+
         function animate() {
             //鍵盤事件
             keyboard.update()
             if (keyboard.down("Z")) {
-                if (!isturn) {
+                if (!isTurn) {
+                    $("#turnbtn").text("轉動");
                     //恢復轉動時，要將目前的時間當作起點時間
                     preTime = Date.now();
                 } else {
-                    //取得暫停當下的角度，在重新啟動時把這個角度算進去
-                    preAngle = pointer.rotation.z;
+                    $("#turnbtn").text("暫停");
                 }
-                isturn = !isturn;
+                isTurn = !isTurn;
             }
             //渲染畫面
             renderer.render(scene, camera);
-            //轉動
-            if (isturn) { turn(); }
+            if (isTurn) {
+                //style 0 是扇形，1 是指針
+                if (style) {
+                    //模式
+                    if (mode) {
+                        jump();
+                    } else {
+                        turn();
+                    }
+                } else {
+                    //模式
+                    if (mode) {
+                        //跳動
+                        jumpCircle();
+                    } else {
+                        //轉動
+                        turnCircle();
+                    }
+                }
+            }
             requestAnimationFrame(animate);
         }
+
+        //扇形函式
+        /*
+            circleAngle從PI/2的位置慢慢減少
+            扇形的角度會是從circleAngle的位置往PI/2
+            所以角度會是PI/2-circleAngle
+        */
+        function turnCircle() {
+            //每次要畫新的扇形就把舊的刪除掉
+            scene.remove(circle);
+            //計算模式
+            //以時間差做計算
+            if (calc) {
+                circleAngle -= Math.PI * 2 / 60000 * (Date.now() - preTime);
+            }
+            //以FPS60做計算
+            else {
+                circleAngle -= Math.PI * 2 / 60 / 60;
+            }
+            //當扇形轉滿一圈之後讓起始角度改回PI/2的位置重新跑
+            if (circleAngle <= (-Math.PI * 3 / 2)) {
+                circleAngle += Math.PI * 2;
+            }
+            circle = new THREE.Mesh(new THREE.CircleGeometry(20, 64, circleAngle, Math.PI / 2 - circleAngle),
+                new THREE.MeshBasicMaterial({
+                    color: 0x727D82
+                }));
+            scene.add(circle);
+        }
+
+        function jumpCircle() {
+            var now = Date.now();
+            var difference = now - preTime;
+            if (difference >= 1000) {
+                //每次要畫新的扇形就把舊的刪除掉
+                scene.remove(circle);
+                //計算模式
+                //以時間差做計算
+                if (calc) {
+                    circleAngle -= Math.PI * 2 / 60000 * difference;
+                }
+                //以FPS60做計算
+                else {
+                    circleAngle -= Math.PI * 2 / 60;
+                }
+                //當扇形轉滿一圈之後讓起始角度改回PI/2的位置重新跑
+                if (circleAngle <= (-Math.PI * 3 / 2)) {
+                    circleAngle += Math.PI * 2;
+                }
+                circle = new THREE.Mesh(new THREE.CircleGeometry(20, 64, circleAngle, Math.PI / 2 - circleAngle),
+                    new THREE.MeshBasicMaterial({
+                        color: 0x727D82
+                    }));
+                scene.add(circle);
+                preTime = now;
+            }
+        }
+
+        function jump() {
+            var difference = Date.now() - preTime;
+            //至少一秒過後才轉動(跳動)一次
+            if (difference >= 1000) {
+                //FPS運算直接2PI/60(秒)
+                if (calc) {
+                    var angle = Math.PI * 2 / 60;
+                }
+                //每幀的時間差算出角度
+                else {
+                    var angle = Math.PI * 2 / 60000 * difference - preAngle;
+                }
+                pointer.rotation.z -= angle;
+                preTime = Date.now();
+            }
+        }
+
         function turn() {
+
             //2PI/60秒/FPS60
             //Math.PI * 2 / 60 / 60
-            //改以時間差做角度計算
+            if (calc) {
+                var angle = Math.PI * 2 / 60 / 60;
+            }
+            //時間差做角度計算
             //1min=1*60sec=60*1000ms=60000ms
             //   PI*2          目前要轉的角度
             //----------  =  -----------------
             // 60000毫秒      每次animate時間差
-            var now = Date.now();
-            //補上preAngle的角度才吻合暫停後再開始的樣子
-            var angle = Math.PI * 2 / 60000 * (now - preTime) - preAngle;
-            pointer.rotation.z = -angle;
+            else {
+                var difference = Date.now() - preTime;
+                //補上preAngle的角度才吻合暫停後再開始的樣子
+                var angle = Math.PI * 2 / 60000 * (difference) - preAngle;
+            }
+            pointer.rotation.z -= angle;
+            preTime = Date.now();
         }
 
         //這邊如同按下Z鍵一樣的做法
         $("#turnbtn").click(function () {
-            if (!isturn) {
+            if (!isTurn) {
+                $("#turnbtn").text("轉動");
                 //恢復轉動時，要將目前的時間當作起點時間
                 preTime = Date.now();
             } else {
-                //取得暫停當下的角度，在重新啟動時把這個角度算進去
-                preAngle = pointer.rotation.z;
+                $("#turnbtn").text("暫停");
             }
-            isturn = !isturn;
+            isTurn = !isTurn;
+        })
+
+        $("#modebtn").click(function () {
+            //改成跳動
+            if (mode == 0) {
+                $("#modebtn").text("跳動");
+                mode = 1;
+            }
+            //改成連續
+            else {
+                $("#modebtn").text("連續");
+                mode = 0;
+            }
+        })
+
+        $("#calcbtn").click(function () {
+            //改成跳動
+            if (calc == 0) {
+                $("#calcbtn").text("60FPS運算");
+                calc = 1;
+            }
+            //改成連續
+            else {
+                $("#calcbtn").text("時間運算");
+                calc = 0;
+            }
+        })
+
+        $("#stylebtn").click(function () {
+            //指針轉扇形
+            if (style) {
+                $("#stylebtn").text("扇形");
+                style = 0;
+                //把轉動軸、背板與指針隱藏
+                bearing.visible = false;
+                backplane.visible = false;
+                pointer.visible = false;
+                //歸零
+                circleAngle = Math.PI / 2;
+            }
+            //扇形轉指針
+            else {
+                $("#stylebtn").text("指針");
+                style = 1;
+                //需要remove circle以免跟backplane重疊
+                scene.remove(circle);
+                //把轉動軸、背板與指針顯示
+                bearing.visible = true;
+                backplane.visible = true;
+                pointer.visible = true;
+                //歸零
+                pointer.rotation.z = 0;
+                preTime = Date.now();
+                preAngle = 0;
+            }
         })
     </script>
 </body>
