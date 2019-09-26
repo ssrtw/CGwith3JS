@@ -180,26 +180,27 @@
         }
 
         function animate() {
-            //鍵盤事件
-            keyboard.update()
-            if (keyboard.down("Z")) {
-                if (!isTurn) {
-                    $("#turnbtn").text("轉動");
-                    //恢復轉動時，要將目前的時間當作起點時間
-                    preTime = Date.now();
-                } else {
-                    $("#turnbtn").text("暫停");
-                }
-                isTurn = !isTurn;
-            }
             //渲染畫面
             renderer.render(scene, camera);
             //時鐘模式
             if (clock) {
                 runClock();
             }
-            //正常模式
+            //一般模式
             else {
+                //鍵盤事件
+                //一般模式下才讓Z鍵發揮作用
+                keyboard.update();
+                if (keyboard.down("Z")) {
+                    if (!isTurn) {
+                        $("#turnbtn").text("轉動");
+                        //恢復轉動時，要將目前的時間當作起點時間
+                        preTime = Date.now();
+                    } else {
+                        $("#turnbtn").text("暫停");
+                    }
+                    isTurn = !isTurn;
+                }
                 if (isTurn) {
                     //style 0 是扇形，1 是指針
                     if (style) {
@@ -406,7 +407,7 @@
         });
 
         $("#clockbtn").click(function () {
-            //改回正常模式
+            //改回一般模式
             if (clock) {
                 $("#turnbtn").prop("disabled", false);
                 $("#modebtn").prop("disabled", false);
@@ -425,6 +426,9 @@
                     secHand.visible = false;
                     bearing.visible = false;
                 }
+                //切換回去要將紀錄時間變成現在與先前角度歸零
+                preTime = Date.now();
+                preAngle = 0;
             }
             //變成時鐘
             else {
