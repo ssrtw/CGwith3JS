@@ -39,6 +39,7 @@
                 <button id="turnbtn" class="btn btn-primary">暫停</button>
                 <button id="modebtn" class="btn btn-info">連續</button>
                 <button id="calcbtn" class="btn btn-success">時間運算</button>
+                <button id="clockbtn" class="btn btn-danger">時鐘</button>
             </div>
         </div>
     </nav>
@@ -53,7 +54,7 @@
         //場景、渲染器、相機
         var scene, renderer, camera;
         //指針,背板,扇形,轉動軸
-        var pointer, backplane, circle, bearing;
+        var secHand, backplane, circle, bearing;
         //啟動前一次的時間點
         var preTime = Date.now();
         //紀錄上次暫停時的角度
@@ -65,8 +66,13 @@
             選擇用什麼方式運作,0是連續,1是跳動；
             計算方式,0是時間,1是FPS；
             扇形或指針,0扇形,1指針；
+            變成一個現實中的時鐘；
         */
-        var isTurn = false, mode = 0, calc = 0, style = 0;
+        var isTurn = false, mode = 0, calc = 0, style = 0, clock = false;
+
+        //時鐘所需物件：分針 時針
+        var minHand, hrHand;
+
         //扇形角度
         var circleAngle = Math.PI / 2;
 
@@ -111,16 +117,16 @@
             bearing.rotation.x += Math.PI / 2;
             scene.add(bearing);
 
+            /*---------------秒針開始---------------*/
             //完整指針
-            pointer = new THREE.Group();
+            secHand = new THREE.Group();
             //指針柄
-            // var handle=new THREE.BoxGeometry(1,10,1)//x,y,z
             var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, 0.5),
                 new THREE.MeshBasicMaterial({
                     color: "gray"
                 }));
             handle.position.set(0, 5, 0.5);
-            pointer.add(handle);
+            secHand.add(handle);
             //箭頭
             var arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 5, 64),
                 new THREE.MeshBasicMaterial({
@@ -129,13 +135,46 @@
             //10+2.5
             arrow.position.set(0, 12.5, 0.5);
             //指針箭頭
-            pointer.add(arrow);
-            //完整指針放到場景
-            scene.add(pointer);
+            secHand.add(arrow);
+
+            //放入秒針
+            scene.add(secHand);
+            /*---------------秒針結束---------------*/
+            /*---------------分針開始---------------*/
+            //完整指針
+            minHand = new THREE.Group();
+            //指針柄
+            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 13, 0.5),
+                new THREE.MeshBasicMaterial({
+                    color: 0x789DA8
+                }));
+            handle.position.set(0, 6, 1);
+            minHand.add(handle);
+
+            //放入分針
+            scene.add(minHand);
+            /*---------------分針結束---------------*/
+            /*---------------時針開始---------------*/
+            //完整指針
+            hrHand = new THREE.Group();
+            //指針柄
+            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 0.5),
+                new THREE.MeshBasicMaterial({
+                    color: 0x15737D
+                }));
+            handle.position.set(0, 4, 1.5);
+            hrHand.add(handle);
+
+            //放入時針
+            scene.add(hrHand);
+            /*---------------時針結束---------------*/
+
             //先不顯示背板、指針跟轉動軸
             bearing.visible = false;
             backplane.visible = false;
-            pointer.visible = false;
+            secHand.visible = false;
+            minHand.visible = false;
+            hrHand.visible = false;
         }
 
         function animate() {
@@ -153,27 +192,53 @@
             }
             //渲染畫面
             renderer.render(scene, camera);
-            if (isTurn) {
-                //style 0 是扇形，1 是指針
-                if (style) {
-                    //模式
-                    if (mode) {
-                        jump();
+            //時鐘模式
+            if (clock) {
+                runClock();
+            }
+            //正常模式
+            else {
+                if (isTurn) {
+                    //style 0 是扇形，1 是指針
+                    if (style) {
+                        //模式
+                        if (mode) {
+                            jump();
+                        } else {
+                            turn();
+                        }
                     } else {
-                        turn();
-                    }
-                } else {
-                    //模式
-                    if (mode) {
-                        //跳動
-                        jumpCircle();
-                    } else {
-                        //轉動
-                        turnCircle();
+                        //模式
+                        if (mode) {
+                            //跳動
+                            jumpCircle();
+                        } else {
+                            //轉動
+                            turnCircle();
+                        }
                     }
                 }
             }
             requestAnimationFrame(animate);
+        }
+
+        function runClock() {
+            var now = new Date();
+            var sec = now.getSeconds();
+            var min = now.getMinutes();
+            var hr = now.getHours();
+            //秒針旋轉角度 now/60(sec)=x/(2*PI)
+            secHand.rotation.z = -(sec / 60 * Math.PI * 2);
+            //分針旋轉角度 now/60(min)=x/(2*PI)
+            minHand.rotation.z = -(min / 60 * Math.PI * 2);
+            //時針旋轉角度 now/60(min)=x/(2*PI)
+            /*
+                一小時時針會走(1/6)*PI,一小時60分鐘,每分鐘會讓時針多走0.5度也就是(1/360)*PI
+                所以當前分鐘*(1/360)*PI會是現在分鐘讓時針多走的角度
+                
+                或是分針當下旋轉角度/12好像也是時針所增加的角度
+            */
+            hrHand.rotation.z = -(hr / 12 * Math.PI * 2 + min * Math.PI / 360);
         }
 
         //扇形函式
@@ -245,7 +310,7 @@
                 else {
                     var angle = Math.PI * 2 / 60000 * difference - preAngle;
                 }
-                pointer.rotation.z -= angle;
+                secHand.rotation.z -= angle;
                 preTime = Date.now();
             }
         }
@@ -267,7 +332,7 @@
                 //補上preAngle的角度才吻合暫停後再開始的樣子
                 var angle = Math.PI * 2 / 60000 * (difference) - preAngle;
             }
-            pointer.rotation.z -= angle;
+            secHand.rotation.z -= angle;
             preTime = Date.now();
         }
 
@@ -281,7 +346,7 @@
                 $("#turnbtn").text("暫停");
             }
             isTurn = !isTurn;
-        })
+        });
 
         $("#modebtn").click(function () {
             //改成跳動
@@ -294,7 +359,7 @@
                 $("#modebtn").text("連續");
                 mode = 0;
             }
-        })
+        });
 
         $("#calcbtn").click(function () {
             //改成跳動
@@ -307,7 +372,7 @@
                 $("#calcbtn").text("時間運算");
                 calc = 0;
             }
-        })
+        });
 
         $("#stylebtn").click(function () {
             //指針轉扇形
@@ -317,7 +382,7 @@
                 //把轉動軸、背板與指針隱藏
                 bearing.visible = false;
                 backplane.visible = false;
-                pointer.visible = false;
+                secHand.visible = false;
                 //歸零
                 circleAngle = Math.PI / 2;
             }
@@ -330,13 +395,51 @@
                 //把轉動軸、背板與指針顯示
                 bearing.visible = true;
                 backplane.visible = true;
-                pointer.visible = true;
+                secHand.visible = true;
                 //歸零
-                pointer.rotation.z = 0;
+                secHand.rotation.z = 0;
                 preTime = Date.now();
                 preAngle = 0;
             }
-        })
+        });
+
+        $("#clockbtn").click(function () {
+            //改回正常模式
+            if (clock) {
+                $("#turnbtn").prop("disabled", false);
+                $("#modebtn").prop("disabled", false);
+                $("#calcbtn").prop("disabled", false);
+                $("#stylebtn").prop("disabled", false);
+                //如果是指針模式，不隱藏背板與秒針
+                if (style) {
+                    minHand.visible = false;
+                    hrHand.visible = false;
+                }
+                //在扇形模式就把針都隱藏背板也隱藏
+                else {
+                    minHand.visible = false;
+                    hrHand.visible = false;
+                    backplane.visible = false;
+                    secHand.visible = false;
+                }
+            }
+            //變成時鐘
+            else {
+                $("#turnbtn").prop("disabled", true);
+                $("#modebtn").prop("disabled", true);
+                $("#calcbtn").prop("disabled", true);
+                $("#stylebtn").prop("disabled", true);
+                //移除扇形
+                scene.remove(circle);
+                //背板不管是否本來就在指針模式都再設定一次是否顯示
+                backplane.visible = true;
+                //秒針不管是否本來就在指針模式都再設定一次是否顯示
+                secHand.visible = true;
+                minHand.visible = true;
+                hrHand.visible = true;
+            }
+            clock = !clock;
+        });
     </script>
 </body>
 
