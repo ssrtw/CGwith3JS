@@ -115,6 +115,8 @@
                     color: 0x000000
                 }));
             bearing.rotation.x += Math.PI / 2;
+            //旋轉之後還是Z軸朝前面?
+            bearing.position.z = 3;
             scene.add(bearing);
 
             /*---------------秒針開始---------------*/
@@ -144,7 +146,7 @@
             //完整指針
             minHand = new THREE.Group();
             //指針柄
-            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 13, 0.5),
+            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 14, 0.5),
                 new THREE.MeshBasicMaterial({
                     color: 0x789DA8
                 }));
@@ -158,18 +160,18 @@
             //完整指針
             hrHand = new THREE.Group();
             //指針柄
-            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 0.5),
+            var handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 8, 0.5),
                 new THREE.MeshBasicMaterial({
                     color: 0x15737D
                 }));
-            handle.position.set(0, 4, 1.5);
+            handle.position.set(0, 3, 1.5);
             hrHand.add(handle);
 
             //放入時針
             scene.add(hrHand);
             /*---------------時針結束---------------*/
 
-            //先不顯示背板、指針跟轉動軸
+            //先不顯示背板、三根針跟轉動軸
             bearing.visible = false;
             backplane.visible = false;
             secHand.visible = false;
@@ -410,17 +412,18 @@
                 $("#modebtn").prop("disabled", false);
                 $("#calcbtn").prop("disabled", false);
                 $("#stylebtn").prop("disabled", false);
-                //如果是指針模式，不隱藏背板與秒針
+                //如果是指針模式，只隱藏，不隱藏背板、秒針和轉動軸
                 if (style) {
                     minHand.visible = false;
                     hrHand.visible = false;
                 }
-                //在扇形模式就把針都隱藏背板也隱藏
+                //在扇形模式就把針、背板和轉動軸都隱藏
                 else {
                     minHand.visible = false;
                     hrHand.visible = false;
                     backplane.visible = false;
                     secHand.visible = false;
+                    bearing.visible = false;
                 }
             }
             //變成時鐘
@@ -431,10 +434,11 @@
                 $("#stylebtn").prop("disabled", true);
                 //移除扇形
                 scene.remove(circle);
-                //背板不管是否本來就在指針模式都再設定一次是否顯示
+                //背板、轉動軸、秒針不管是否本來就在指針模式都再設定一次是否顯示
+                bearing.visible = true;
                 backplane.visible = true;
-                //秒針不管是否本來就在指針模式都再設定一次是否顯示
                 secHand.visible = true;
+                //顯示時針分針
                 minHand.visible = true;
                 hrHand.visible = true;
             }
