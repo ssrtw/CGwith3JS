@@ -254,13 +254,15 @@
             //每次要畫新的扇形就把舊的刪除掉
             scene.remove(circle);
             //計算模式
-            //以時間差做計算
-            if (calc) {
-                circleAngle -= Math.PI * 2 / 60000 * (Date.now() - preTime);
-            }
             //以FPS60做計算
-            else {
+            if (calc) {
                 circleAngle -= Math.PI * 2 / 60 / 60;
+            }
+            //以時間差做計算
+            else {
+                circleAngle -= Math.PI * 2 / 60000 * (Date.now() - preTime);
+                //每次計算完當前時間差，把preTime改到now
+                preTime = Date.now();
             }
             //當扇形轉滿一圈之後讓起始角度改回PI/2的位置重新跑
             if (circleAngle <= (-Math.PI * 3 / 2)) {
@@ -280,13 +282,13 @@
                 //每次要畫新的扇形就把舊的刪除掉
                 scene.remove(circle);
                 //計算模式
-                //以時間差做計算
-                if (calc) {
-                    circleAngle -= Math.PI * 2 / 60000 * difference;
-                }
                 //以FPS60做計算
-                else {
+                if (calc) {
                     circleAngle -= Math.PI * 2 / 60;
+                }
+                //以時間差做計算
+                else {
+                    circleAngle -= Math.PI * 2 / 60000 * difference;
                 }
                 //當扇形轉滿一圈之後讓起始角度改回PI/2的位置重新跑
                 if (circleAngle <= (-Math.PI * 3 / 2)) {
