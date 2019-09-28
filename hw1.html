@@ -251,6 +251,7 @@
             所以角度會是PI/2-circleAngle
         */
         function turnCircle() {
+            var now = Date.now();
             //每次要畫新的扇形就把舊的刪除掉
             scene.remove(circle);
             //計算模式
@@ -260,9 +261,8 @@
             }
             //以時間差做計算
             else {
-                circleAngle -= Math.PI * 2 / 60000 * (Date.now() - preTime);
+                circleAngle -= Math.PI * 2 / 60000 * (now - preTime);
                 //每次計算完當前時間差，把preTime改到now
-                preTime = Date.now();
             }
             //當扇形轉滿一圈之後讓起始角度改回PI/2的位置重新跑
             if (circleAngle <= (-Math.PI * 3 / 2)) {
@@ -273,6 +273,7 @@
                     color: 0x727D82
                 }));
             scene.add(circle);
+            preTime = now;
         }
 
         function jumpCircle() {
@@ -304,7 +305,8 @@
         }
 
         function jump() {
-            var difference = Date.now() - preTime;
+            var now = Date.now();
+            var difference = now - preTime;
             //至少一秒過後才轉動(跳動)一次
             if (difference >= 1000) {
                 //FPS運算直接2PI/60(秒)
@@ -316,12 +318,12 @@
                     var angle = Math.PI * 2 / 60000 * difference - preAngle;
                 }
                 secHand.rotation.z -= angle;
-                preTime = Date.now();
+                preTime = now;
             }
         }
 
         function turn() {
-
+            var now = Date.now();
             //2PI/60秒/FPS60
             //Math.PI * 2 / 60 / 60
             if (calc) {
@@ -333,12 +335,12 @@
             //----------  =  -----------------
             // 60000毫秒      每次animate時間差
             else {
-                var difference = Date.now() - preTime;
+                var difference = now - preTime;
                 //補上preAngle的角度才吻合暫停後再開始的樣子
                 var angle = Math.PI * 2 / 60000 * (difference) - preAngle;
             }
             secHand.rotation.z -= angle;
-            preTime = Date.now();
+            preTime = now;
         }
 
         //這邊如同按下Z鍵一樣的做法
