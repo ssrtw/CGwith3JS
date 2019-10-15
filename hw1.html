@@ -35,10 +35,10 @@
             </div>
             <span class="text-white nav-text">按Z鍵可暫停/轉動</span>
             <div id="navbtn">
-                <button id="stylebtn" class="btn btn-warning">扇形</button>
-                <button id="turnbtn" class="btn btn-primary">暫停</button>
-                <button id="modebtn" class="btn btn-info">連續</button>
-                <button id="calcbtn" class="btn btn-success">時間運算</button>
+                <button id="stylebtn" class="btn btn-warning">指針</button>
+                <button id="turnbtn" class="btn btn-primary">轉動</button>
+                <button id="modebtn" class="btn btn-info">跳動</button>
+                <button id="calcbtn" class="btn btn-success">60FPS運算</button>
                 <button id="clockbtn" class="btn btn-danger">時鐘</button>
             </div>
         </div>
@@ -193,11 +193,11 @@
                 keyboard.update();
                 if (keyboard.down("Z")) {
                     if (!isTurn) {
-                        $("#turnbtn").text("轉動");
+                        $("#turnbtn").text("暫停");
                         //恢復轉動時，要將目前的時間當作起點時間
                         preTime = Date.now();
                     } else {
-                        $("#turnbtn").text("暫停");
+                        $("#turnbtn").text("轉動");
                     }
                     isTurn = !isTurn;
                 }
@@ -346,11 +346,11 @@
         //這邊如同按下Z鍵一樣的做法
         $("#turnbtn").click(function () {
             if (!isTurn) {
-                $("#turnbtn").text("轉動");
+                $("#turnbtn").text("暫停");
                 //恢復轉動時，要將目前的時間當作起點時間
                 preTime = Date.now();
             } else {
-                $("#turnbtn").text("暫停");
+                $("#turnbtn").text("轉動");
             }
             isTurn = !isTurn;
         });
@@ -358,12 +358,12 @@
         $("#modebtn").click(function () {
             //改成跳動
             if (mode == 0) {
-                $("#modebtn").text("跳動");
+                $("#modebtn").text("連續");
                 mode = 1;
             }
             //改成連續
             else {
-                $("#modebtn").text("連續");
+                $("#modebtn").text("跳動");
                 mode = 0;
             }
         });
@@ -371,12 +371,12 @@
         $("#calcbtn").click(function () {
             //改成跳動
             if (calc == 0) {
-                $("#calcbtn").text("60FPS運算");
+                $("#calcbtn").text("時間運算");
                 calc = 1;
             }
             //改成連續
             else {
-                $("#calcbtn").text("時間運算");
+                $("#calcbtn").text("60FPS運算");
                 calc = 0;
             }
         });
@@ -384,7 +384,7 @@
         $("#stylebtn").click(function () {
             //指針轉扇形
             if (style) {
-                $("#stylebtn").text("扇形");
+                $("#stylebtn").text("指針");
                 style = 0;
                 //把轉動軸、背板與指針隱藏
                 bearing.visible = false;
@@ -395,7 +395,7 @@
             }
             //扇形轉指針
             else {
-                $("#stylebtn").text("指針");
+                $("#stylebtn").text("扇形");
                 style = 1;
                 //需要remove circle以免跟backplane重疊
                 scene.remove(circle);
