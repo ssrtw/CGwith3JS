@@ -44,13 +44,13 @@
         var keyboard = new KeyboardState();
 
         class Ball {
-            constructor(mesh, x = 0, y = 0, z = 0, vx, vz) {
+            constructor(mesh, x = 0, y = 0, z = 0, vx, vy) {
                 this.mesh = mesh;
                 scene.add(this.mesh);
                 this.pos = new THREE.Vector3(x, y, z);  // 初始位置
-                this.vel = new THREE.Vector3(40, 30, 0); // 初速
+                this.vel = new THREE.Vector3(vx, vy, 0); // 初速
                 this.force = new THREE.Vector3(0, -20, 0); // 重力
-                this.m = 1;
+                this.m = 2;
             }
             update(dt) {
                 this.vel.add(this.force.clone().multiplyScalar(dt / this.m));
@@ -65,7 +65,7 @@
                     //從場景中移除這個ball
                     scene.remove(this.mesh);
                     //砲彈陣列的全域變數
-                    balls.shift();
+                    // balls.shift();
                 }
                 this.mesh.position.copy(this.pos);
             }
@@ -87,9 +87,9 @@
                 width / height,
                 1,
                 1000);
-            camera.position.x = 50;
+            camera.position.x = 0;
             camera.position.y = 50;
-            camera.position.z = 50;
+            camera.position.z = 100;
             //算時間差
             clock = new THREE.Clock();
             //把坦克部件抓出來
@@ -97,7 +97,7 @@
             //坦克放入場景
             tank = buildTank(parts);
             scene.add(tank);
-            // let controls = new THREE.OrbitControls(camera, renderer.domElement);
+            let controls = new THREE.OrbitControls(camera, renderer.domElement);
             camera.lookAt(scene.position);
         }
         function bulidPart() {
@@ -156,20 +156,38 @@
                 tank.position.x -= 0.1 * Math.cos(tank.rotation.y);
                 tank.position.z += 0.1 * Math.sin(tank.rotation.y);
             }
-            if (keyboard.pressed("A")) {
-                tank.rotation.y += 0.01;
+            // if (keyboard.pressed("A")) {
+            //     tank.rotation.y += 0.01;
+            // }
+            // if (keyboard.pressed("D")) {
+            //     tank.rotation.y -= 0.01;
+            // }
+            if (keyboard.pressed("I")) {
+                //只能往上到60度，不然穿模太嚴重
+                if (parts[2].rotation.y < Math.PI / 3)
+                    parts[2].rotation.y += 0.01;
             }
-            if (keyboard.pressed("D")) {
-                tank.rotation.y -= 0.01;
-            }
-            if (keyboard.pressed("up")) {
-                parts[2].rotation.y += 0.01;
+            if (keyboard.pressed("K")) {
+                //只能往下到-60度，不然穿模太嚴重
+                if (parts[2].rotation.y > -Math.PI / 3)
+                    parts[2].rotation.y -= 0.01;
             }
             if (keyboard.down("space")) {
-                let position = parts[3].getWorldPosition();
-                let ball = new THREE.Mesh(new THREE.SphereGeometry(2.5, 20, 20),
+                //抓出旋轉軸
+                let turn = parts[2];
+                //抓出砲管
+                let cannon = parts[3];
+                //取得旋轉軸的位置
+                let tGPW = turn.getWorldPosition();
+                //取得砲管的位置
+                let cGPW = cannon.getWorldPosition();
+                let ball = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 20),
                     new THREE.MeshNormalMaterial());
-                balls.push(new Ball(ball, position.x, position.y, position.z));
+                //砲彈的初始位置會是砲管中心位置的兩倍減去轉動軸的位置
+                //旋轉軸的y軸旋轉度數會等於要射出砲彈的方向，砲彈是斜拋...
+                //固定速度為30，所以拆水平跟垂直分力，然後用旋轉度數取正餘弦函數*30
+                balls.push(new Ball(ball, 2 * cGPW.x - tGPW.x, 2 * cGPW.y - tGPW.y, 2 * cGPW.z - tGPW.z
+                    , Math.cos(turn.rotation.y) * 30, Math.sin(turn.rotation.y) * 30));
             }
             // console.log();
         }
