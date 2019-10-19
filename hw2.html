@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>HW1-time-based animation</title>
+    <title>HW2-Hierarchical Model</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="style.css" rel="stylesheet">
@@ -12,7 +12,8 @@
             margin-left: auto;
             margin-right: auto;
             display: block;
-            width: 600px;
+            width: 100%;
+            height: 80%;
         }
 
         /* 增加button間距 */
@@ -44,28 +45,24 @@
         var keyboard = new KeyboardState();
 
         class Ball {
-            constructor(mesh, x = 0, y = 0, z = 0, vx, vy) {
+            constructor(mesh, x = 0, y = 0, z = 0, vx, vz, vy) {
                 this.mesh = mesh;
                 scene.add(this.mesh);
                 this.pos = new THREE.Vector3(x, y, z);  // 初始位置
-                this.vel = new THREE.Vector3(vx, vy, 0); // 初速
+                this.vel = new THREE.Vector3(vx, vy, vz); // 初速
                 this.force = new THREE.Vector3(0, -20, 0); // 重力
                 this.m = 2;
+                this.remove = false;
             }
             update(dt) {
                 this.vel.add(this.force.clone().multiplyScalar(dt / this.m));
                 this.pos.add(this.vel.clone().multiplyScalar(dt));
-
-                if (this.pos.y < 0) {
-                    this.pos.y = 0;
-                    this.vel.y *= -0.85;
-                }
-                if (this.pos.x > 100) {
+                if (this.pos.y <= 0) {
                     // remove from scene (自己做)
                     //從場景中移除這個ball
                     scene.remove(this.mesh);
-                    //砲彈陣列的全域變數
-                    // balls.shift();
+                    //回傳true則通知forEach移除這個砲彈物件
+                    this.remove = true;
                 }
                 this.mesh.position.copy(this.pos);
             }
@@ -74,12 +71,32 @@
         init();
         animate();
 
+        function loadCubemap() {
+
+            var path = "textures/cubeMaps/";
+            var format = '.png';
+            var urls = [
+                path + 'px' + format, path + 'nx' + format,
+                path + 'py' + format, path + 'ny' + format,
+                path + 'pz' + format, path + 'nz' + format
+            ];
+            var loader = new THREE.CubeTextureLoader();
+            var cubeMap = loader.load(urls);
+            cubeMap.format = THREE.RGBFormat;
+            return cubeMap;
+
+        }
+
         function init() {
             scene = new THREE.Scene();
-            let width = 600;
-            let height = 450;
+            //弄一個外圍場景
+            let cubeMap = loadCubemap();
+            scene.background = cubeMap;
+            let width = window.innerWidth;
+            let height = window.innerHeight;
             renderer = new THREE.WebGLRenderer();
             renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
             renderer.setClearColor('white');
             $('#canvas').append(renderer.domElement);
             camera = new THREE.PerspectiveCamera(
@@ -95,14 +112,39 @@
             //把坦克部件抓出來
             parts = bulidPart();
             //坦克放入場景
-            tank = buildTank(parts);
+            tank = buildTank();
             scene.add(tank);
             let controls = new THREE.OrbitControls(camera, renderer.domElement);
             camera.lookAt(scene.position);
+            // //做一片地板
+            // //https://www.1001freedownloads.com/free-clipart/desert-camo-print
+            // let planeMat = new THREE.TextureLoader().load('textures/desert.jpg');
+            // planeMat.wrapS = THREE.RepeatWrapping;
+            // planeMat.wrapT = THREE.RepeatWrapping;
+            // planeMat.repeat.set(3, 3);
+            // let plane = new THREE.Mesh(new THREE.PlaneGeometry(200, 200, 4, 4),
+            //     new THREE.MeshPhongMaterial({
+            //         map: planeMat,
+            //     }));
+            // plane.rotation.x -= Math.PI / 2;
+            // scene.add(plane);
+            //需要有光源，不然Phong會全黑...
+            let pointLight = new THREE.PointLight();
+            pointLight.position.set(50, 100, 100);
+            scene.add(pointLight);
         }
         function bulidPart() {
+            let loader = new THREE.TextureLoader();
+            //https://www.deviantart.com/hhh316/art/Seamless-desert-sand-texture-183159331
+            texture = loader.load('textures/camouflage.svg');
+            texture.minFilter = THREE.LinearFilter;
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 1);
             //預設材質
-            let mat = new THREE.MeshNormalMaterial();
+            let mat = new THREE.MeshPhongMaterial({
+                map: texture,
+            });
             let parts = [];
             //車身
             let base = new THREE.Mesh(new THREE.BoxGeometry(40, 10, 20), mat);
@@ -118,7 +160,7 @@
             parts.push(turn);
             return parts;
         }
-        function buildTank(parts) {
+        function buildTank() {
             //坦克車集合
             let tank = new THREE.Object3D();
 
@@ -143,7 +185,13 @@
         }
         function animate() {
             let dt = clock.getDelta();
-            balls.forEach(function (b) { b.update(dt) });
+            balls.forEach(function (b, index) {
+                b.update(dt);
+                //去抓b的remove屬性，如果是該被移除，就從陣列丟出
+                if (b.remove) {
+                    balls.splice(index, 1);
+                }
+            });
 
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
@@ -172,7 +220,17 @@
                 if (parts[2].rotation.y > -Math.PI / 3)
                     parts[2].rotation.y -= 0.01;
             }
+            //左旋轉砲塔
+            if (keyboard.pressed("J")) {
+                parts[1].rotation.y += 0.01;
+            }
+            //右旋轉砲塔
+            if (keyboard.pressed("L")) {
+                parts[1].rotation.y -= 0.01;
+            }
             if (keyboard.down("space")) {
+                //抓出砲塔
+                let turret = parts[1];
                 //抓出旋轉軸
                 let turn = parts[2];
                 //抓出砲管
@@ -182,14 +240,18 @@
                 //取得砲管的位置
                 let cGPW = cannon.getWorldPosition();
                 let ball = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 20),
-                    new THREE.MeshNormalMaterial());
+                    new THREE.MeshPhongMaterial({
+                        color: 0x412722,
+                    }));
                 //砲彈的初始位置會是砲管中心位置的兩倍減去轉動軸的位置
                 //旋轉軸的y軸旋轉度數會等於要射出砲彈的方向，砲彈是斜拋...
                 //固定速度為30，所以拆水平跟垂直分力，然後用旋轉度數取正餘弦函數*30
                 balls.push(new Ball(ball, 2 * cGPW.x - tGPW.x, 2 * cGPW.y - tGPW.y, 2 * cGPW.z - tGPW.z
-                    , Math.cos(turn.rotation.y) * 30, Math.sin(turn.rotation.y) * 30));
+                    , Math.cos(turret.rotation.y * -1) * Math.cos(turn.rotation.y) * 30
+                    , Math.sin(turret.rotation.y * -1) * Math.cos(turn.rotation.y) * 30
+                    , Math.sin(turn.rotation.y) * 30));
             }
-            // console.log();
+            // console.log(tank.computeBoundingBox());
         }
     </script>
 </body>
