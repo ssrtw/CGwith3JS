@@ -31,6 +31,9 @@
                         <a class="nav-link" href="index.html">Home</a>
                     </li>
                 </ul>
+                <span class="text-white nav-text">
+                    仰角：<span id="angle">0.00</span>度
+                </span>
             </div>
             <div id="navbtn">
                 <button id="newTargetBtn" class="btn btn-primary">產生標靶</button>
@@ -50,6 +53,7 @@
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
         //必要全域變數
         var scene, camera, renderer;
+        //一個clock計算砲彈的拋物線deltaT
         var clock;
         //坦克車
         var tank, parts;
@@ -123,6 +127,8 @@
                 this.mesh.position.z = z;
                 //+5讓高度至少到地面
                 this.mesh.position.y = Math.floor(Math.random() * 20) + 5;
+                //隨機角度
+                this.mesh.rotation.y = Math.random() * Math.PI;
                 scene.add(this.mesh);
             }
         }
@@ -188,11 +194,6 @@
             scene.add(plane);
 
             //需要有光源，不然Phong會全黑...
-            // let pointLight = new THREE.PointLight(0xffffff, 0.8);
-            // pointLight.position.set(50, 100, 100);
-            // pointLight.castShadow = true;
-            // scene.add(pointLight);
-
             //環境光源
             let ambientLight = new THREE.AmbientLight(0xaaaaaa);
             scene.add(ambientLight);
@@ -201,12 +202,12 @@
             dLight = new THREE.DirectionalLight(0xffffff, 0.5);
             dLight.position.set(80, 160, -100);
             dLight.castShadow = true;
-            dLight.shadow.camera.left = -180;
-            dLight.shadow.camera.top = -180;
-            dLight.shadow.camera.right = 180;
-            dLight.shadow.camera.bottom = 180;
+            dLight.shadow.camera.left = -280;
+            dLight.shadow.camera.top = -260;
+            dLight.shadow.camera.right = 280;
+            dLight.shadow.camera.bottom = 200;
             dLight.shadow.camera.near = 1;
-            dLight.shadow.camera.far = 300;
+            dLight.shadow.camera.far = 400;
             dLight.target = scene;
             dLight.shadow.mapSize.width = dLight.shadow.mapSize.height = 1024;
             scene.add(dLight);
@@ -292,21 +293,7 @@
             turn.add(cannon);
             return tank;
         }
-        function animate() {
-            //動畫變數
-            let tankRotation = 0.01;
-            let tankSpeed = 0.2;
-            let turretRotation = 0.02;
-            //第一人稱視角
-            if (FPP) {
-                //車身
-                let base = new THREE.Vector3(), cannon = new THREE.Vector3();
-                parts[0].getWorldPosition(base);
-                camera.position.set(base.x, base.y + 30, base.z);
-                //砲管
-                parts[3].getWorldPosition(cannon);
-                camera.lookAt(cannon.x, cannon.y + 10, cannon.z);
-            }
+        function ballsAnimate() {
             let dt = clock.getDelta();
             balls.forEach(function (b, bi) {
                 b.update(dt);
@@ -328,9 +315,11 @@
                         球的半徑為0.5，標靶的厚度為10(從中心點往兩側算都是5)
                         所以如果球跟標靶的位置相差小於5.5(0.5+5)
                         意味著砲彈打中了標靶
-                        標靶中心點往上往下都5，球半徑0.5，5+1.5=5.5，y相差5.5以內就是擊中目標
+                        標靶為正方形，中心點離三軸長度為5，球半徑0.5
+                        5+0.5=5.5，球與標靶的距離於5.5以內就是擊中目標，三軸都是5.5
                     */
-                    if (Math.abs(bx - tx) < 5.5 && Math.abs(bz - tz) < 5.5 && Math.abs(by - ty) < 5.5) {
+                    let CollisionBox = 5.3;
+                    if (Math.abs(bx - tx) < CollisionBox && Math.abs(bz - tz) < CollisionBox && Math.abs(by - ty) < CollisionBox) {
                         //從場景中移除這個標靶
                         scene.remove(t.mesh);
                         //從陣列中移除這個標靶
@@ -342,16 +331,28 @@
                     }
                 })
             });
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
+        }
+
+        function keyboardEvent(tankRotation = 0.01, tankSpeed = 0.2, turretRotation = 0.02) {
             keyboard.update();
             if (keyboard.pressed("W")) {
-                tank.position.x += tankSpeed * Math.cos(tank.rotation.y);
-                tank.position.z -= tankSpeed * Math.sin(tank.rotation.y);
+                if (keyboard.pressed("shift")) {
+                    tank.position.x += 2 * tankSpeed * Math.cos(tank.rotation.y);
+                    tank.position.z -= 2 * tankSpeed * Math.sin(tank.rotation.y);
+                } else {
+                    tank.position.x += tankSpeed * Math.cos(tank.rotation.y);
+                    tank.position.z -= tankSpeed * Math.sin(tank.rotation.y);
+                }
             }
             if (keyboard.pressed("S")) {
-                tank.position.x -= tankSpeed * Math.cos(tank.rotation.y);
-                tank.position.z += tankSpeed * Math.sin(tank.rotation.y);
+                //按下shift催油門
+                if (keyboard.pressed("shift")) {
+                    tank.position.x -= 2 * tankSpeed * Math.cos(tank.rotation.y);
+                    tank.position.z += 2 * tankSpeed * Math.sin(tank.rotation.y);
+                } else {
+                    tank.position.x -= tankSpeed * Math.cos(tank.rotation.y);
+                    tank.position.z += tankSpeed * Math.sin(tank.rotation.y);
+                }
             }
             if (keyboard.pressed("A")) {
                 tank.rotation.y += tankRotation;
@@ -363,11 +364,13 @@
                 //只能往上到60度，不然會穿模
                 if (parts[2].rotation.y < Math.PI / 3)
                     parts[2].rotation.y += turretRotation;
+                $("#angle").text((parts[2].rotation.y / Math.PI * 180).toFixed(2));
             }
             if (keyboard.pressed("K")) {
                 //只能往下到-20度，不然會穿模
                 if (parts[2].rotation.y > -Math.PI / 9)
                     parts[2].rotation.y -= turretRotation;
+                $("#angle").text((parts[2].rotation.y / Math.PI * 180).toFixed(2));
             }
             //左旋轉砲塔
             if (keyboard.pressed("J")) {
@@ -401,6 +404,25 @@
                     , Math.sin((tank.rotation.y + turret.rotation.y) * -1) * Math.cos(turn.rotation.y) * speed
                     , Math.sin(turn.rotation.y) * speed));
             }
+        }
+
+        function animate() {
+            //第一人稱視角
+            if (FPP) {
+                //車身
+                let base = new THREE.Vector3(), cannon = new THREE.Vector3();
+                parts[0].getWorldPosition(base);
+                camera.position.set(base.x, base.y + 30, base.z);
+                //砲管
+                parts[3].getWorldPosition(cannon);
+                camera.lookAt(cannon.x, cannon.y + 10, cannon.z);
+            }
+            //砲彈動作(含拋物線與打擊標靶)
+            ballsAnimate();
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+            //偵測鍵盤事件
+            keyboardEvent();
         }
         $("#newTargetBtn").click(function () {
             targets.push(new Target());
