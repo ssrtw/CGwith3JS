@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>HW2-Hierarchical Model</title>
+    <title>HW3-OBJ loader, drive, collision</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="style.css" rel="stylesheet">
@@ -11,7 +11,6 @@
             margin-left: auto;
             margin-right: auto;
             display: block;
-            width: 800px;
         }
 
         /* 增加button間距 */
@@ -22,7 +21,18 @@
 </head>
 
 <body>
-
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand">OBJ loader, drive, collision</span>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
     <div id="canvas"></div>
     <script src="https://threejs.org/build/three.min.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
@@ -36,7 +46,13 @@
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
         //threejs必要
-        var scene, camera, renderer;
+        var scene, camera, renderer, skyCamera;
+        //儀錶板
+        var dashboard, point;
+        var width = window.innerWidth * 0.9;
+        var height = window.innerHeight * 0.9;
+        $("#canvas").width(width);
+        $("#canvas").height(height);
         //時間差
         var clock;
         //胎痕
@@ -47,6 +63,17 @@
         var force = new THREE.Vector3();
         var power, angle;
         var loadFinish = false;
+        var carSize = new THREE.Vector3();
+        //按照演算法的9個判斷結果，0就是沒撞到
+        //第一個位置1是前方2後方3車子中間，第二個位置1是左方2右方3是中間，3就不給轉
+        var collision = [0, 0];
+        //如果要倒車(撞到後要開走)
+        var reversing = false;
+        //1：往前 0：倒車
+        var direction = 1;
+        //障礙物陣列
+        // var pillars = [];
+        var pillar;
         //鍵盤事件
         var keyboard = new KeyboardState();
 
@@ -58,18 +85,36 @@
 
         init();
         animate();
-        function init() {
 
+        class Pillar {
+            constructor() {
+                let loader = new THREE.TextureLoader();
+                let pillarTexture = loader.load('textures/brick.png');
+                //http://jsfiddle.net/jmcjc5u/pLbsaj6v/ --- 組合輪胎
+                pillarTexture.wrapS = THREE.RepeatWrapping;
+                pillarTexture.wrapT = THREE.RepeatWrapping;
+                pillarTexture.repeat.set(4, 2);
+                //加上圓柱體
+                this.mesh = new THREE.Mesh(
+                    new THREE.CylinderGeometry(5, 5, 20, 32),
+                    new THREE.MeshPhongMaterial({
+                        side: THREE.DoubleSide,
+                        map: pillarTexture
+                    })
+                );
+                //圓柱可在地板顯示陰影
+                this.mesh.castShadow = true;
+                this.mesh.position.y = 10;
+                scene.add(this.mesh);
+            }
+        }
+        function init() {
             //場景
             scene = new THREE.Scene();
             //cubemap
             let cube = loadCubemap();
             scene.background = cube;
 
-            // let width = window.innerWidth;
-            // let height = window.innerHeight;
-            let width = 800;
-            let height = 600;
 
             //攝影機
             camera = new THREE.PerspectiveCamera(
@@ -82,6 +127,13 @@
             camera.position.z = 50;
             camera.lookAt(scene.position);
 
+
+            //鳥瞰攝影機
+            skyCamera = new THREE.OrthographicCamera(-500, 500, 500, -500, -10, 600);
+            skyCamera.position.y = 100;
+            skyCamera.up.set(0, 0, -1);
+            skyCamera.lookAt(new THREE.Vector3())
+
             //renderer
             renderer = new THREE.WebGLRenderer();
             renderer.setSize(width, height);
@@ -89,13 +141,15 @@
             //陰影
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            //不自動清除畫面
+            renderer.autoClear = false;
 
             $("#canvas").append(renderer.domElement);
 
-            //歐逼康啜
+            // //歐逼康啜
             // controls = new THREE.OrbitControls(camera, renderer.domElement);
             // controls.name = 'controls';
-            //禁用方向鍵調整歐逼康輟位置
+            // // 禁用方向鍵調整歐逼康輟位置
             // controls.enableKeys = false;
 
             //THREE提供的物件(算時間)
@@ -105,14 +159,14 @@
             dLight = new THREE.DirectionalLight(0xffffff, 0.5);
             dLight.position.set(80, 160, -100);
             dLight.castShadow = true;
-            dLight.shadow.camera.left = -280;
-            dLight.shadow.camera.top = -260;
-            dLight.shadow.camera.right = 280;
-            dLight.shadow.camera.bottom = 200;
+            dLight.shadow.camera.left = -500;
+            dLight.shadow.camera.top = -500;
+            dLight.shadow.camera.right = 500;
+            dLight.shadow.camera.bottom = 500;
             dLight.shadow.camera.near = 1;
-            dLight.shadow.camera.far = 400;
+            dLight.shadow.camera.far = 1000;
             dLight.target = scene;
-            dLight.shadow.mapSize.width = dLight.shadow.mapSize.height = 1024;
+            dLight.shadow.mapSize.width = dLight.shadow.mapSize.height = 2048;
             scene.add(dLight);
             dLight.shadow.bias = -.01;
             dLight.name = 'dirLight';
@@ -122,13 +176,16 @@
             let pointLight = new THREE.PointLight(0xffffff);
             pointLight.position.set(100, 200, -100);
             scene.add(pointLight);
+
+            //讀取車子
             readModel("Lamborghini_Aventador", 'car');
 
             //地板
-            let planeMat = new THREE.TextureLoader().load('textures/kasahara.png');
+            //https://www.deviantart.com/hhh316/art/Seamless-mountain-rock-183926178
+            let planeMat = new THREE.TextureLoader().load('textures/mountainrock.jpg');
             planeMat.wrapS = THREE.RepeatWrapping;
             planeMat.wrapT = THREE.RepeatWrapping;
-            planeMat.repeat.set(5, 5);
+            planeMat.repeat.set(15, 15);
             let plane = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000, 4, 4),
                 new THREE.MeshLambertMaterial({
                     side: THREE.DoubleSide, // 雙面材質
@@ -140,82 +197,329 @@
             plane.receiveShadow = true;
             scene.add(plane);
 
-            //輔助
-            // gridxz = new THREE.GridHelper(200, 20, 'red', 'black');
-            // scene.add(gridxz);
-            // let axis = new THREE.AxesHelper(10000);
-            // scene.add(axis);
-
             //車速與轉動角度
             power = 1.0;
             angle = 0.0;
+
+            let loader = new THREE.TextureLoader();
+            let pillarTexture = loader.load('textures/brick.png');
+            //http://jsfiddle.net/jmcjc5u/pLbsaj6v/ --- 組合輪胎
+            pillarTexture.wrapS = THREE.RepeatWrapping;
+            pillarTexture.wrapT = THREE.RepeatWrapping;
+            pillarTexture.repeat.set(4, 2);
+            //加上圓柱體
+            pillar = new THREE.Mesh(
+                new THREE.CylinderGeometry(5, 5, 20, 32),
+                new THREE.MeshPhongMaterial({
+                    side: THREE.DoubleSide,
+                    map: pillarTexture
+                })
+            );
+            //圓柱可在地板顯示陰影
+            pillar.castShadow = true;
+            pillar.position.y = 10;
+
+            //空出中間給車子加入場景不一開始就被撞到
+            pillar.position.x = Math.ceil(Math.random() * 251) - 500;
+            pillar.position.z = Math.ceil(Math.random() * 251) - 500;
+            if (Math.abs(pillar.position.x) <= 50) {
+                pillar.position.x += 50;
+            }
+            if (Math.abs(pillar.position.z) <= 50) {
+                pillar.position.z += 50;
+            }
+            scene.add(pillar);
+
+            /**********************************************************************/
+            /**********************************************************************/
+            /**********************************************************************/
+
+            //儀錶板
+            sceneHUD = new THREE.Scene();
+            let dashboardTexture = loader.load('textures/dashboard.png');
+            dashboard = new THREE.Mesh(
+                new THREE.PlaneGeometry(5, 5, 1, 1),
+                new THREE.MeshBasicMaterial({
+                    map: dashboardTexture,
+                    alphaTest: 0.5,
+                    opacity: 0.9,
+                    transparent: true,
+                    depthTest: false
+                })
+            );
+            dashboard.position.x = -7;
+            dashboard.position.y = -7;
+            sceneHUD.add(dashboard);
+            //---------------------------------------------
+            let pointTexture = loader.load('textures/dashboard_point.png');
+            point = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.5, 5, 1, 1),
+                new THREE.MeshBasicMaterial({
+                    map: pointTexture,
+                    alphaTest: 0.5,
+                    opacity: 0.9,
+                    transparent: true,
+                    depthTest: false
+                })
+            );
+            point.position.x = -7;
+            point.position.y = -7;
+            sceneHUD.add(point);
+            cameraHUD = new THREE.OrthographicCamera(-10, 10, 10, -10, -10, 1600);
+            cameraHUD.position.z = 1580;
         }
 
         function animate() {
             let car;
             //讓localToWorld可以正常使用
             scene.updateMatrixWorld();
-            if (scene.getObjectByName("car") !== undefined) {
+            if (scene.getObjectByName("car") !== undefined && loadFinish == false) {
+                angle = Math.PI;
                 loadFinish = !loadFinish;
+                car = scene.getObjectByName('car');
+                car.rotation.y = Math.PI;
             }
             if (loadFinish) {
                 car = scene.getObjectByName("car");
                 dirLight = scene.getObjectByName("dirLight");
                 cameraPos = car.localToWorld(new THREE.Vector3(-40, 30, 0));
-                dirLightPos = car.localToWorld(new THREE.Vector3(-100, 100, 0));
                 camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
                 camera.lookAt(car.position);
-                dirLight.lookAt(car.position);
                 //算時間差
                 var dt = clock.getDelta();
-                update(dt);
+                update(dt, car);
                 // car update
                 car.position.copy(pos);
                 car.rotation.y = angle;
             }
-            renderer.render(scene, camera);
+            render();
+
+            //儀錶板指針==>轉動
+            let speed = vel.length();
+            //頂速兩百
+            point.rotation.z = speed / 100 * (Math.PI * 1.5) * -1;
+
             requestAnimationFrame(animate);
         }
 
-        function update(dt) {
+        function update(dt, car) {
             keyboard.update();
+            let isKeyDown = false;
             if (vel.length() > 0) {
                 angle = Math.atan2(-vel.z, vel.x); // update orientation
             }
 
-            if (keyboard.pressed("space"))
+            //急殺
+            if (keyboard.pressed("space")) {
                 power = 0.1;
-            if (keyboard.pressed("W")) {
-                power *= 1.5;
+                vel.multiplyScalar(0.8);
             }
-            //改為倒車
+
+            //穿過去啦！，不太可能，打算改到000初始位置
+            if (collision[0] == 3 & collision[1] == 3) {
+                vel.set(0, 0, 0);
+            }
+
+            //正常狀態
+            //油門催蕊
+            //如果前方撞上就不能再往前開了
+            if (!(reversing && collision[0] == 1) && keyboard.pressed("W")) {
+                if (direction == 0) {
+                    power /= 1.3;
+                    if (power <= 0.005) {
+                        direction = 1;
+                        angle_thrust += Math.PI;
+                    }
+                } else {
+                    direction = 1;
+                    power *= 1.3;
+                }
+                isKeyDown = true;
+            }
+            //放油門
             if (keyboard.pressed("S")) {
-                power /= 1.5;
+                power /= 1.3;
+            }
+            //後方撞上就不能再往後開了
+            if (!(reversing && collision[0] == 2) && keyboard.pressed("X")) {
+                if (power == 0) {
+                    power = 0.2;
+                }
+                if (direction) {
+                    power /= 1.3;
+                    if (power <= 0.005) {
+                        direction = 0;
+                        angle_thrust += Math.PI;
+                    }
+                }
+                if (direction == 0) {
+                    power *= 1.3;
+                    //倒車不能快QQ
+                    power = Math.clamp(power, 0, 100);
+                }
+                isKeyDown = true;
             }
 
             //跑車跑很快
-            power = Math.clamp(power, 0, 320.0);
+            power = Math.clamp(power, 0, 200);
 
 
             var angle_thrust = angle;
-            if (power > 6) {
-                if (keyboard.pressed("A"))
-                    angle_thrust += 0.7;
-                if (keyboard.pressed("D"))
-                    angle_thrust -= 0.7;
+            if (vel.length() > 6) {
+                //如果要往左轉，如果沒被撞到，撞到不給轉彎
+                if (keyboard.pressed("A") && !(reversing && collision[1] == 1)) {
+                    if (direction)
+                        angle_thrust += 0.314;
+                    else
+                        angle_thrust -= 0.314;
+                }
+                //如果要往右轉，如果沒被撞到，撞到不給轉彎
+                if (keyboard.pressed("D") && !(reversing && collision[1] == 2))
+                    if (direction)
+                        angle_thrust -= 0.314;
+                    else
+                        angle_thrust += 0.314;
             }
 
+            var thrust = new THREE.Vector3(1, 0, 0).multiplyScalar(power);
+
             // compute force
-            var thrust =
-                new THREE.Vector3(1, 0, 0).multiplyScalar(power)
-                    .applyAxisAngle(new THREE.Vector3(0, 1, 0), angle_thrust);
+            thrust.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle_thrust);
+
             force.copy(thrust);
             //阻力
-            force.add(vel.clone().multiplyScalar(-2))
+            force.add(vel.clone().multiplyScalar(-2));
 
-            // eulers
-            vel.add(force.clone().multiplyScalar(dt));
-            pos.add(vel.clone().multiplyScalar(dt));
+
+            if (checkInsert(car, carSize, pillar, 5)) {
+                console.log("撞到惹");
+                if (!reversing) {
+                    reversing = true;
+                    //速度直接歸零
+                    thrust.set(0, 0, 0);
+                    vel.set(0, 0, 0);
+                    force.set(0, 0, 0);
+                    //只讓駕駛從正確的方向開走
+                    direction = !direction;
+                } else {
+                    if (isKeyDown) {
+                        // eulers
+                        vel.add(force.clone().multiplyScalar(dt));
+                        if (direction) {
+                            pos.add(vel.clone().multiplyScalar(dt));
+                        } else {
+                            pos.add(vel.clone().multiplyScalar(dt * -1));
+                        }
+                    }
+                }
+            } else {
+                reversing = false;
+                collision = [0, 0];
+                // eulers
+                vel.add(force.clone().multiplyScalar(dt));
+                if (direction) {
+                    pos.add(vel.clone().multiplyScalar(dt));
+                } else {
+                    pos.add(vel.clone().multiplyScalar(dt * -1));
+                }
+            }
+
+        }
+
+        function checkInsert(rect, rsize, circle, r) {
+            /*
+                1. 設x’ 為 v方向之單位向量
+                z’ = cross (x’, (0,1,0)).normalize()
+                2. 座標轉換（以中心點p 為例）
+            */
+            //
+            let halfSize = new THREE.Vector2(rsize.x / 2, rsize.z / 2);
+
+            //取得目前世界座標
+            let where = new THREE.Vector3();
+            let center = new THREE.Vector3();
+            rect.getWorldPosition(where);
+            circle.getWorldPosition(center);
+
+            let rx = where.x;
+            let rz = where.z;
+            let cx = center.x;
+            let cz = center.z;
+
+            let turn = -angle;
+            let tCos = Math.cos(turn);
+            let tSin = Math.sin(turn);
+
+            //轉正
+            let newC = new THREE.Vector2(tSin * cz + tCos * cx, tCos * cz - tSin * cx);
+            let newR = new THREE.Vector2(tSin * rz + tCos * rx, tCos * rz - tSin * rx);
+            //轉正之後，找出兩個對角線上的點
+            let max = new THREE.Vector2(newR.x + halfSize.x - newC.x, newR.y + halfSize.y - newC.y);
+            let min = new THREE.Vector2(newR.x - halfSize.x - newC.x, newR.y - halfSize.y - newC.y);
+
+            collision = 0;
+
+            /*
+               +X
+                ^
+                |
+                |
+            --------->+Z
+                |
+                |
+            */
+            if (max.x < 0) {
+                if (max.y < 0) {
+                    //車右前方撞到
+                    collision = [1, 2];
+                    console.log(1);
+                    return (max.x * max.x + max.y * max.y < r * r);
+                } else if (min.y > 0) {
+                    //車左前方撞到
+                    collision = [1, 1];
+                    console.log(2);
+                    return (max.x * max.x + min.y * min.y < r * r);
+                } else {
+                    //車中間前面撞上
+                    collision = [1, 3];
+                    console.log(3);
+                    return (Math.abs(max.x) < r);
+                }
+            } else if (min.x > 0) {
+                if (max.y < 0) {
+                    //車後右後方撞上
+                    collision = [2, 2];
+                    console.log(4);
+                    return (min.x * min.x + max.y * max.y < r * r);
+                } else if (min.y > 0) {
+                    //車子左後撞上
+                    collision = [2, 1];
+                    console.log(5);
+                    return (min.x * min.x + min.y * min.y < r * r);
+                } else {
+                    //車子正後方撞上
+                    collision = [2, 3];
+                    console.log(6);
+                    return (min.x < r);
+                }
+            } else {
+                if (max.y < 0) {
+                    //車子右側撞到
+                    collision = [3, 2];
+                    console.log(7);
+                    return (Math.abs(max.y) < r);
+                } else if (min.y > 0) {
+                    //車子左側撞到
+                    collision = [3, 1];
+                    console.log(8);
+                    return (min.y < r);
+                } else {
+                    //穿過去啦！
+                    // collision = [3, 3];
+                    console.log(9);
+                    return true;
+                }
+            }
         }
 
         function readModel(modelName, objName = 'OBJ', targetSize = 40) {
@@ -239,13 +543,22 @@
                 objLoader.setMaterials(materials);
                 objLoader.setPath('models/');
                 objLoader.load(modelName + '.obj', function (object) {
-                    let theObject = unitize(object, targetSize, "OBJ");
-                    // theObject.add(new THREE.BoxHelper(theObject))
-
+                    theObject = unitize(object, targetSize, "OBJ");
+                    // theObject.add(new THREE.BoxHelper(theObject));
                     theObject.name = objName;
+                    theObject.traverse(function (object) {
+                        if (object instanceof THREE.Mesh) {
+                            object.castShadow = true
+                            object.receiveShadow = true
+                        }
+                    })
                     scene.add(theObject);
+                    var box3 = new THREE.Box3();
+                    box3.setFromObject(theObject);
+                    carSize = new THREE.Vector3().subVectors(box3.max, box3.min);
+                    console.log(carSize);
                     //不須改變軸的方向
-                    // theObject.setRotationFromEuler(new THREE.Euler(3.1416 / 2, 0, -3.1416 / 2, 'ZYX'))
+                    // theObject.setRotationFromEuler(new THREE.Euler(0, Math.PI / 2))
 
                 }, onProgress, onError);
 
@@ -272,15 +585,19 @@
             // uniform scaling according to objSize
             var objSize = Math.max(size.x, size.y, size.z);
             var scaleSet = targetSize / objSize;
-
             var theObject = new THREE.Object3D();
             theObject.add(object);
             object.scale.set(scaleSet, scaleSet, scaleSet);
-            object.position.set(-center.x * scaleSet, center.y * scaleSet, -center.z * scaleSet);
+            object.position.set(-center.x * scaleSet, 0, -center.z * scaleSet);
 
             object.rotation.y = Math.PI / 2;
-            // let axis = new THREE.AxesHelper(10000);
+            // let axis = new THREE.AxesHelper(10);
             // theObject.add(axis);
+
+            //get now size
+
+            // carSize = size.multiplyScalar(scaleSet);
+
             return theObject;
         }
 
@@ -298,6 +615,20 @@
             cubeMap.format = THREE.RGBFormat;
             return cubeMap;
 
+        }
+
+        function render() {
+
+            renderer.clear();
+
+            renderer.setViewport(0, 0, width / 2, height);
+            camera.aspect = width / 2 / height;
+            camera.updateProjectionMatrix();
+            renderer.render(scene, camera);
+            renderer.render(sceneHUD, cameraHUD);
+
+            renderer.setViewport(width / 2, 0, width / 2, height);
+            renderer.render(scene, skyCamera);
         }
     </script>
 </body>
