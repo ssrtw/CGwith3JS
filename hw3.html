@@ -113,12 +113,10 @@
                 //空出中間給車子加入場景不一開始就被撞到
                 this.mesh.position.x = Math.ceil(Math.random() * 1001) - 500;
                 this.mesh.position.z = Math.ceil(Math.random() * 1001) - 500;
-                if (Math.abs(this.mesh.position.x) <= 50) {
-                    this.mesh.position.x += 50;
-                }
-                if (Math.abs(this.mesh.position.z) <= 50) {
-                    this.mesh.position.z += 50;
-                }
+                do {
+                    this.mesh.position.x = Math.ceil(Math.random() * 1001) - 500;
+                    this.mesh.position.z = Math.ceil(Math.random() * 1001) - 500;
+                } while (Math.abs(this.mesh.position.x) <= 50 && Math.abs(this.mesh.position.z) <= 50)
                 scene.add(this.mesh);
             }
         }
@@ -306,6 +304,12 @@
             point.rotation.z = speed / 100 * (Math.PI * 1.5) * -1;
             kmH.text = (speed / 100 * 90).toFixed(0);
             requestAnimationFrame(animate);
+
+            //車子快要超出邊界
+            //硬是拉回原點
+            if (Math.abs(pos.x) >= 450 || Math.abs(pos.z) >= 450) {
+                pos.set(0, 0, 0);
+            }
         }
 
         function update(dt, car) {
@@ -317,8 +321,8 @@
 
             //急殺
             if (keyboard.pressed("space")) {
-                power = 0.1;
-                vel.multiplyScalar(0.8);
+                power = 0.2;
+                vel.multiplyScalar(0.85);
             }
 
             //穿過去啦！，不太可能，打算改到000初始位置
@@ -371,7 +375,7 @@
 
 
             var angle_thrust = angle;
-            if (vel.length() > 6) {
+            if (vel.length() > 10) {
                 //如果要往左轉，如果沒被撞到，撞到不給轉彎
                 if (keyboard.pressed("A") && !(reversing && collision[1] == 1)) {
                     if (direction)
@@ -416,7 +420,7 @@
             //如果又撞到別顆，就會用到上面的forEach去判定又撞到了哪一顆。
             if (reversing) {
                 if (isKeyDown) {
-                    console.log("有按下阿!!!");
+                    console.log("把車開走");
                     // eulers
                     vel.add(force.clone().multiplyScalar(dt));
                     if (direction) {
