@@ -30,14 +30,42 @@
                         <a class="nav-link" href="index.html">Home</a>
                     </li>
                 </ul>
+                <!-- 作業說明按鈕 -->
+                <div id="navbtn">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#descriptionModal">
+                        Info
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
     <div id="canvas">
     </div>
-    <script src="https://threejs.org/build/three.min.js"></script>
-    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+    <!-- 作業說明彈跳視窗 -->
+    <div class="modal fade" id="descriptionModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">作業說明</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    A:左轉 W:前進 D:右轉 S:踩煞車 X:倒車(R檔)<br>
+                    Space:急殺(手煞車硬拉) <br>
+                    車子即將跑出地圖範圍會把車子拉回原點<br>
+                    在初始化時就會生成10個大小不一的障礙物
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://threejs.org/build/three.min.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
     <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
@@ -90,7 +118,7 @@
         class Pillar {
             constructor() {
                 let pillarTexture = new THREE.TextureLoader().load('textures/brick.png');
-                //最大倍率
+                //障礙物倍率
                 let size = Math.ceil(Math.random() * 4);
                 //這個圓柱體的半徑
                 this.radius = 5 * size;
