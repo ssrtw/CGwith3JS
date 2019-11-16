@@ -4,7 +4,7 @@
 <head>
     <title>HW3-OBJ loader, drive, collision</title>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendor/css/bootstrap.min.css">
     <link href="style.css" rel="stylesheet">
     <style>
         #canvas {
@@ -63,13 +63,13 @@
             </div>
         </div>
     </div>
-    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="vendor/js/jquery-3.3.1.min.js"></script>
+    <script src="vendor/js/bootstrap.min.js"></script>
     <script src="https://threejs.org/build/three.min.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
-    <script src="assets/js/text2D.js"></script>
+    <script src="vendor/js/KeyboardState.js"></script>
+    <script src="vendor/js/text2D.js"></script>
 
     <script>
         //檢查FPS
@@ -117,7 +117,7 @@
 
         class Pillar {
             constructor() {
-                let pillarTexture = new THREE.TextureLoader().load('textures/brick.png');
+                let pillarTexture = new THREE.TextureLoader().load('vendor/textures/brick.png');
                 //障礙物倍率
                 let size = Math.ceil(Math.random() * 4);
                 //這個圓柱體的半徑
@@ -207,22 +207,18 @@
             dLight.shadow.camera.far = 1000;
             dLight.target = scene;
             dLight.shadow.mapSize.width = dLight.shadow.mapSize.height = 1024;
-            scene.add(dLight);
             dLight.shadow.bias = -.01;
             dLight.name = 'dirLight';
             scene.add(dLight);
             let ambientLight = new THREE.AmbientLight(0xaaaaaa);
             scene.add(ambientLight);
-            let pointLight = new THREE.PointLight(0xffffff);
-            pointLight.position.set(100, 200, -100);
-            scene.add(pointLight);
 
             //讀取車子
             readModel("Lamborghini_Aventador", 'car');
 
             //地板
             //https://www.deviantart.com/hhh316/art/Seamless-mountain-rock-183926178
-            let planeMat = new THREE.TextureLoader().load('textures/mountainrock.jpg');
+            let planeMat = new THREE.TextureLoader().load('vendor/textures/mountainrock.jpg');
             planeMat.wrapS = THREE.RepeatWrapping;
             planeMat.wrapT = THREE.RepeatWrapping;
             planeMat.repeat.set(15, 15);
@@ -248,7 +244,7 @@
             let loader = new THREE.TextureLoader();
             //儀錶板
             sceneHUD = new THREE.Scene();
-            let dashboardTexture = loader.load('textures/dashboard.png');
+            let dashboardTexture = loader.load('vendor/textures/dashboard.png');
             dashboard = new THREE.Mesh(
                 new THREE.PlaneGeometry(550, 550, 1, 1),
                 new THREE.MeshBasicMaterial({
@@ -264,7 +260,7 @@
             sceneHUD.add(dashboard);
             //---------------------------------------------
             //儀錶板指針
-            let pointTexture = loader.load('textures/dashboard_point.png');
+            let pointTexture = loader.load('vendor/textures/dashboard_point.png');
             point = new THREE.Mesh(
                 new THREE.PlaneGeometry(55, 550, 1, 1),
                 new THREE.MeshBasicMaterial({
@@ -314,15 +310,15 @@
             if (loadFinish) {
                 car = scene.getObjectByName("car");
                 dirLight = scene.getObjectByName("dirLight");
-                cameraPos = car.localToWorld(new THREE.Vector3(-40, 30, 0));
-                camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
-                camera.lookAt(car.position);
                 //算時間差
                 var dt = clock.getDelta();
                 update(dt, car);
                 // car update
                 car.position.copy(pos);
                 car.rotation.y = angle;
+                cameraPos = car.localToWorld(new THREE.Vector3(-40, 25, 0));
+                camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
+                camera.lookAt(car.position);
             }
             render();
 
@@ -582,14 +578,14 @@
             var onError = function (xhr) { };
 
             var mtlLoader = new THREE.MTLLoader();
-            mtlLoader.setPath('models/');
+            mtlLoader.setPath('vendor/models/' + modelName + '/');
             mtlLoader.load(modelName + '.mtl', function (materials) {
 
                 materials.preload();
 
                 var objLoader = new THREE.OBJLoader();
                 objLoader.setMaterials(materials);
-                objLoader.setPath('models/');
+                objLoader.setPath('vendor/models/' + modelName + '/');
                 objLoader.load(modelName + '.obj', function (object) {
                     theObject = unitize(object, targetSize, "OBJ");
                     // theObject.add(new THREE.BoxHelper(theObject));
@@ -651,7 +647,7 @@
 
         function loadCubemap() {
 
-            var path = "textures/cubeMap2/";
+            var path = "vendor/textures/cubeMap2/";
             var format = '.png';
             var urls = [
                 path + 'posx' + format, path + 'negx' + format,

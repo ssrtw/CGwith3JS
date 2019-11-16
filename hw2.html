@@ -4,7 +4,7 @@
 <head>
     <title>HW2-Hierarchical Model</title>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendor/css/bootstrap.min.css">
     <link href="style.css" rel="stylesheet">
     <style>
         #canvas {
@@ -42,9 +42,9 @@
         </div>
     </nav>
     <div id="canvas"></div>
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-    <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+    <script src="vendor/js/jquery-3.3.1.min.js"></script>
+    <script src="vendor/js/bootstrap.min.js"></script>
+    <script src="vendor/js/KeyboardState.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js">
     </script>
@@ -98,7 +98,7 @@
         class Target {
             constructor() {
                 //http://clipart-library.com/clipart/BcgAdxKc8.htm
-                let targetTexture = new THREE.TextureLoader().load('textures/target.png');
+                let targetTexture = new THREE.TextureLoader().load('vendor/textures/target.png');
                 this.mesh = new THREE.Mesh(
                     new THREE.BoxGeometry(10, 10, 10),
                     new THREE.MeshPhongMaterial({
@@ -178,7 +178,7 @@
             camera.lookAt(scene.position);
             //做一片地板
             //https://www.deviantart.com/hhh316/art/Seamless-desert-sand-texture-183159331
-            let planeMat = new THREE.TextureLoader().load('textures/desert.png');
+            let planeMat = new THREE.TextureLoader().load('vendor/textures/desert.png');
             planeMat.wrapS = THREE.RepeatWrapping;
             planeMat.wrapT = THREE.RepeatWrapping;
             planeMat.repeat.set(3, 3);
@@ -221,7 +221,7 @@
 
         function loadCubemap() {
 
-            var path = "textures/cubeMaps/";
+            var path = "vendor/textures/cubeMaps/";
             var format = '.png';
             var urls = [
                 path + 'px' + format, path + 'nx' + format,
@@ -238,7 +238,7 @@
         function bulidPart() {
             let loader = new THREE.TextureLoader();
             //https://www.1001freedownloads.com/free-clipart/desert-camo-print
-            texture = loader.load('textures/camouflage.svg');
+            texture = loader.load('vendor/textures/camouflage.svg');
             texture.minFilter = THREE.LinearFilter;
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;

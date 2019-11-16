@@ -1,0 +1,62 @@
+# Blender MTL File: 'None'
+# Material Count: 6
+
+newmtl Delightfull_Diana_table_lamp_mat1_mtl_5
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.0 0.0 0.0
+Ni 1.500000
+d 1.000000
+illum 1
+
+newmtl Delightfull_Diana_table_lamp_mat3_mtl_1
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.717600 0.564700 0.458800
+Ks 0.000000 0.000000 0.000000
+Ke 0.0 0.0 0.0
+Ni 1.500000
+d 1.000000
+illum 1
+
+newmtl Delightfull_Diana_table_lamp_mat3_mtl_2
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.968600 0.968600 0.968600
+Ks 0.000000 0.000000 0.000000
+Ke 0.0 0.0 0.0
+Ni 1.500000
+d 1.000000
+illum 1
+
+newmtl Delightfull_Diana_table_lamp_mat3_mtl_3
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.960800 0.960800 0.960800
+Ks 0.000000 0.000000 0.000000
+Ke 0.0 0.0 0.0
+Ni 1.500000
+d 1.000000
+illum 1
+
+newmtl Delightfull_Diana_table_lamp_mat3_mtl_4
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.070600 0.070600 0.070600
+Ks 0.000000 0.000000 0.000000
+Ke 0.0 0.0 0.0
+Ni 1.500000
+d 1.000000
+illum 1
+
+newmtl Delightfull_Diana_table_lamp_mat3_mtl_5
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.000000 0.000000 0.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.0 0.0 0.0
+Ni 1.500000
+d 1.000000
+illum 1
