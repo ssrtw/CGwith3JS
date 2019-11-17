@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>HW2-Hierarchical Model</title>
+    <title>HW4-Class, Raycaster, Shadow Map</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="vendor/css/bootstrap.min.css">
     <link href="style.css" rel="stylesheet">
@@ -22,9 +22,9 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <span class="navbar-brand">Hierarchical Model</span>
+            <span class="navbar-brand">Class, Raycaster, Shadow Map</span>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav">
                     <li class="nav-item">
@@ -33,7 +33,7 @@
                 </ul>
             </div>
         </div>
-    </nav>
+    </nav> -->
     <div id="canvas"></div>
     <script src="vendor/js/jquery-3.3.1.min.js"></script>
     <script src="vendor/js/bootstrap.min.js"></script>
@@ -41,28 +41,119 @@
     <script src="https://threejs.org/build/three.min.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script>
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
         //必要全域變數
         var scene, camera, renderer;
-        var ambientLight, dLight;
+        //視窗大小
+        var width = window.innerWidth;// * 0.9;
+        var height = window.innerHeight;// * 0.9;
+        var aLight, dLight, spotLight, pLight;
+        var aLightIntensity = 1, dLightIntensity = 10, pLightIntensity = 0.2;
+        //己查load狀態
         var finish = false;
         var objNameList = [];
+
+        //
+        var lampToggle;
+        var ceilLampToggle;
+
+        //滑鼠互動變數
+        var raycaster;
+        var mouse = new THREE.Vector2();
+        var pickables = [];
+
+        //室內燈開關
+        class CeilLampToggle {
+            constructor() {
+                this.mesh = new THREE.Object3D();
+                this.powerON = true;
+                //讀取開關
+                readModel("switch", 'switch', 8, this.mesh);
+                objNameList.push('switch');
+                readModel("toggleBtn", 'toggleBtn', 2.2, this.mesh);
+                objNameList.push('toggleBtn');
+            }
+            switchToggle(...settings) {
+                let btn = this.mesh.getObjectByName('switchBtn');
+                if (this.powerON) {
+                    //切到關燈
+                    btn.material.emissive = new THREE.Color('orange');
+                    btn.material.emissiveIntensity = 1;
+                    btn.position.y = -2;
+                    settings.forEach(function (setting) {
+                        setting.light.intensity = 0;
+                    });
+                } else {
+                    //切成開燈
+                    btn.material.emissive = new THREE.Color('0x000000');
+                    btn.material.emissiveIntensity = 0;
+                    btn.position.y = 0;
+                    settings.forEach(function (setting) {
+                        setting.light.intensity = setting.intensity;
+                    });
+                }
+                this.powerON = !this.powerON;
+            }
+        }
+
+        //檯燈開關
+        class LampToggle {
+            constructor() {
+                this.powerON = false;
+                this.mesh = new THREE.Object3D();
+                let btnBox = new THREE.Mesh(
+                    new THREE.BoxGeometry(3, 1, 2),
+                    new THREE.MeshLambertMaterial({
+                        color: 0xdddddd
+                    })
+                );
+                this.mesh.add(btnBox);
+                this.btn = new THREE.Mesh(
+                    new THREE.BoxGeometry(2, 0.75, 1),
+                    new THREE.MeshLambertMaterial({
+                        color: 'beige'
+                    })
+                );
+                //預設關燈
+                this.btn.material.emissive = new THREE.Color('orange');
+                this.btn.material.emissiveIntensity = 1;
+                //給個名字
+                this.btn.name = 'deskLampBtn';
+                this.btn.rotation.z = -Math.PI / 12;
+                this.btn.position.set(0, 0.4, 0);
+                this.mesh.add(this.btn);
+            }
+            switchToggle(light) {
+                if (this.powerON) {
+                    //切到關燈
+                    this.btn.material.emissive = new THREE.Color('orange');
+                    this.btn.material.emissiveIntensity = 1;
+                    this.btn.rotation.z = -Math.PI / 12;
+                    light.intensity = 0;
+                } else {
+                    //切成開燈
+                    this.btn.material.emissive = new THREE.Color('0x000000');
+                    this.btn.material.emissiveIntensity = 0;
+                    this.btn.rotation.z = Math.PI / 12;
+                    light.intensity = 0.2;
+                }
+                this.powerON = !this.powerON;
+            }
+        }
+
         init();
         animate();
 
         function init() {
             scene = new THREE.Scene();
-            let width = window.innerWidth * 0.9;
-            let height = window.innerHeight * 0.9;
             $("#canvas").width(width);
             $("#canvas").height(height);
             renderer = new THREE.WebGLRenderer();
             renderer.setSize(width, height);
-            renderer.setClearColor('green');
+            renderer.setClearColor('black');
             //陰影
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -72,46 +163,93 @@
                 width / height,
                 1,
                 1000);
-            camera.position.x = 0;
-            camera.position.y = 50;
-            camera.position.z = -100;
+            // camera.position.x = 0;
+            // camera.position.y = 50;
+            // camera.position.z = -100;
+            camera.position.x = -140;
+            camera.position.y = 85;
+            camera.position.z = 5;
             ////////////////////////////////////////////////////////////////
 
             //環境光源
-            ambientLight = new THREE.AmbientLight(0xdddddd);
-            scene.add(ambientLight);
+            aLight = new THREE.AmbientLight(0xdddddd, aLightIntensity);
+            scene.add(aLight);
 
             //純喫茶
             let tryittea = buildModel();
             tryittea.castShadow = true;
             tryittea.receiveShadow = true;
-            tryittea.position.set(-135, 41, 105);
+            tryittea.position.set(-110, 41, 85);
             tryittea.rotation.y = -Math.PI / 6;
             scene.add(tryittea);
 
-            //讀取開關
-            readModel("switch", 'switch', 8, scene);
-            objNameList.push('switch');
+            //室內燈開關
+            ceilLampToggle = new CeilLampToggle();
+            ceilLampToggle.mesh.position.set(-125, 80, 20);
+            scene.add(ceilLampToggle.mesh);
+            //床的旁邊也要有一個
+            // ceilLampToggle1 = new CeilLampToggle();
+            // ceilLampToggle1.mesh.position.set(100, 80, 20);
+            // ceilLampToggle1.mesh.rotation.y = Math.PI;
+            // scene.add(ceilLampToggle1.mesh);
+
             //讀取椅子
             readModel("Chair", 'Chair', 55, scene);
             objNameList.push('Chair');
+
+            //讀取床
+            readModel("bed", 'bed', 110, scene, 'Y');
+            objNameList.push('bed');
+
+            /////////////////////////////////////////////
+
+            //檯燈與檯燈的光
+            let deskLamp = new THREE.Object3D();
             //讀取檯燈
-            readModel("Lamp", 'lamp', 30, scene, true);
+            readModel("Lamp", 'lamp', 30, deskLamp, 'Z');
             objNameList.push('lamp');
-            //讀取測試檯燈
-            readModel("test", 'test', 60, scene, true);
-            objNameList.push('test');
-            //讀取測試檯燈
-            readModel("Lamp1", 'Lamp1', 20, scene);
-            objNameList.push('Lamp1');
+            //檯燈光源
+            pLight = new THREE.PointLight(0xffffff, 0);
+            pLight.position.set(4, 13, -11);
+            pLight.castShadow = true;
+            deskLamp.add(pLight);
+            //檯燈光源
+            // spotLight = new THREE.SpotLight(0xffffff, 2, 200, Math.PI / 2, 0, 1);
+            // spotLight.position.set(4, 13, -11);
+
+            // spotLight.castShadow = true;
+
+            // spotLight.shadow.mapSize.width = 1024;
+            // spotLight.shadow.mapSize.height = 1024;
+
+            // spotLight.shadow.camera.near = 500;
+            // spotLight.shadow.camera.far = 4000;
+            // spotLight.shadow.camera.fov = 30;
+            // spotLight.target=tryittea;
+            // deskLamp.add(spotLight);
+
+            // var sphereSize = 1;
+            // var pointLightHelper = new THREE.PointLightHelper(pLight, sphereSize);
+            // scene.add(pointLightHelper);
+            lampToggle = new LampToggle();
+            lampToggle.mesh.position.set(-12, 0.75, -11);
+            deskLamp.add(lampToggle.mesh);
+            deskLamp.position.set(-60, 41, 80);
+            deskLamp.rotation.y = Math.PI * 3 / 4;
+            scene.add(deskLamp);
+
+            pickables.push(lampToggle.btn);
+
+            /////////////////////////////////////////////
+
             //吊燈與室內燈源
-            ceilLamp = new THREE.Object3D();
+            let ceilLamp = new THREE.Object3D();
             //讀取吊燈
             readModel("Brass_Freak", 'ceilLamp', 60, ceilLamp);
             objNameList.push('ceilLamp');
 
             // directional light
-            dLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dLight = new THREE.DirectionalLight(0xffffff, dLightIntensity);
             dLight.castShadow = true;
             dLight.shadow.camera.left = -150;
             dLight.shadow.camera.top = -125;
@@ -122,11 +260,10 @@
             dLight.target = scene;
             dLight.shadow.mapSize.width = dLight.shadow.mapSize.height = 512;
             dLight.shadow.bias = -.01;
-            dLight.name = 'dirLight';
 
-            dLight.position.y = -110;
-            //把方向光加進吊燈組裡
-            ceilLamp.add(dLight);
+            // dLight.position.y = -110;
+            // //把方向光加進吊燈組裡
+            // ceilLamp.add(dLight);
             ceilLamp.position.y = 200;
             scene.add(ceilLamp);
 
@@ -135,8 +272,8 @@
             let planeMat = new THREE.TextureLoader().load('vendor/textures/wood.jpg');
             planeMat.wrapS = THREE.RepeatWrapping;
             planeMat.wrapT = THREE.RepeatWrapping;
-            planeMat.repeat.set(18, 15);
-            let plane = new THREE.Mesh(new THREE.PlaneGeometry(300, 250, 4, 4),
+            planeMat.repeat.set(15, 12);
+            let plane = new THREE.Mesh(new THREE.PlaneGeometry(250, 200, 4, 4),
                 new THREE.MeshLambertMaterial({
                     side: THREE.DoubleSide, // 雙面材質
                     map: planeMat,
@@ -148,15 +285,15 @@
             scene.add(plane);
             //牆壁
             let walls = [
-                createWall(true, 300),
-                createWall(true, 300),
-                createWall(false, 250),
-                createWall(false, 250)
+                createWall(true, 250),
+                createWall(true, 250),
+                createWall(false, 200),
+                createWall(false, 200)
             ];
-            walls[0].position.z = 126;
-            walls[1].position.z = -126;
-            walls[2].position.x = 151;
-            walls[3].position.x = -151;
+            walls[0].position.z = 101;
+            walls[1].position.z = -101;
+            walls[2].position.x = 126;
+            walls[3].position.x = -126;
             walls.forEach(function (wall) {
                 wall.castShadow = true;
                 wall.receiveShadow = true;
@@ -164,35 +301,46 @@
             });
             //桌子
             let desk = createDesk();
-            desk.position.set(-110, 0, 95);
+            desk.position.set(-85, 0, 70);
             scene.add(desk);
             //天花板
-            let celing = new THREE.Mesh(
-                new THREE.BoxGeometry(2, height, width),
+            let ceiling = new THREE.Mesh(
+                new THREE.BoxGeometry(250, 2, 200),
                 new THREE.MeshLambertMaterial({
                     color: 'beige'
                 })
             );
+            ceiling.position.y = 201;
+            scene.add(ceiling);
             let penbox = createPenBox();
-            penbox.position.set(-105, 41, 110);
+            penbox.position.set(-90, 41, 85);
             scene.add(penbox);
+
             //歐逼康啜
             let controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.name = 'controls';
             // 禁用方向鍵調整歐逼康輟位置
             controls.enableKeys = false;
+
+            raycaster = new THREE.Raycaster();
+            document.addEventListener('mousedown', onDocumentMouseDown, false);
         }
         function createDesk() {
+            //https://wallpapersafari.com/w/Khy9xa
+            let texture = new THREE.TextureLoader().load('/vendor/textures/desk.jpg');
             let desk = new THREE.Object3D;
-            let material = new THREE.MeshLambertMaterial({
-                color: 'brown'
+            let desktopmaterial = new THREE.MeshLambertMaterial({
+                map: texture
             });
-            let desktop = new THREE.Mesh(new THREE.BoxGeometry(80, 2, 60), material);
+            let cylinderMaterial = new THREE.MeshLambertMaterial({
+                color: 0x664200
+            });
+            let desktop = new THREE.Mesh(new THREE.BoxGeometry(80, 2, 60), desktopmaterial);
             desktop.position.y = 40;
-            let c1 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), material);
-            let c2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), material);
-            let c3 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), material);
-            let c4 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), material);
+            let c1 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
+            let c2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
+            let c3 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
+            let c4 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
             c1.position.set(35, 20, 25);
             c2.position.set(35, 20, -25);
             c3.position.set(-35, 20, -25);
@@ -224,18 +372,15 @@
             let penBox = new THREE.Object3D();
             let texture = new THREE.TextureLoader().load('vendor/textures/woodcutout.png')
             let material = new THREE.MeshPhongMaterial({ side: THREE.DoubleSide, map: texture, alphaTest: 0.5 });
-            let f1 = new THREE.Mesh(new THREE.BoxGeometry(6.05, 8, 0.05), material);
-            let f2 = new THREE.Mesh(new THREE.BoxGeometry(6.05, 8, 0.05), material);
+            let f1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 8, 6.05), material);
+            let f2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 8, 6.05), material);
             let f3 = new THREE.Mesh(new THREE.BoxGeometry(6.05, 8, 0.05), material);
             let f4 = new THREE.Mesh(new THREE.BoxGeometry(6.05, 8, 0.05), material);
-            let f5 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.05), material);
+            let f5 = new THREE.Mesh(new THREE.BoxGeometry(6, 0.05, 6), material);
             f1.position.set(3, 4, 0);
             f2.position.set(-3, 4, 0);
             f3.position.set(0, 4, 3);
             f4.position.set(0, 4, -3);
-            f1.rotation.y = Math.PI / 2;
-            f2.rotation.y = Math.PI / 2;
-            f5.rotation.x = Math.PI / 2;
             penBox.add(f1, f2, f3, f4, f5);
             penBox.traverse(function (obj) {
                 obj.castShadow = true;
@@ -485,8 +630,7 @@
             return new THREE.Mesh(geometry, materialArray);
         }
 
-        function readModel(modelName, objName = 'OBJ', targetSize = 40, parent, turn = false) {
-
+        function readModel(modelName, objName = 'OBJ', targetSize = 40, parent, turn = undefined) {
             var onProgress = function (xhr) {
                 if (xhr.lengthComputable) {
                     var percentComplete = xhr.loaded / xhr.total * 100;
@@ -506,7 +650,8 @@
                 objLoader.setMaterials(materials);
                 objLoader.setPath('vendor/models/' + modelName + '/');
                 objLoader.load(modelName + '.obj', function (object) {
-                    theObject = unitize(object, targetSize, "OBJ");
+                    console.log("model name:" + modelName);
+                    theObject = unitize(object, targetSize);
                     // theObject.add(new THREE.BoxHelper(theObject));
                     theObject.name = objName;
                     theObject.traverse(function (object) {
@@ -518,8 +663,20 @@
                     //把這個model放入父層
                     parent.add(theObject);
                     //不須改變軸的方向
-                    if (turn)
-                        theObject.setRotationFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
+                    if (turn !== undefined) {
+                        if (turn.toUpperCase() == 'X') {
+                            theObject.setRotationFromEuler(new THREE.Euler(Math.PI / 2, 0, 0))
+                            console.log("----" + modelName + ' to turn ' + turn);
+                        }
+                        else if (turn.toUpperCase() == 'Y') {
+                            theObject.setRotationFromEuler(new THREE.Euler(0, Math.PI / 2, 0))
+                            console.log("----" + modelName + ' to turn ' + turn);
+                        }
+                        else if (turn.toUpperCase() == 'Z') {
+                            theObject.setRotationFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
+                            console.log("----" + modelName + ' to turn ' + turn);
+                        }
+                    }
                 }, onProgress, onError);
 
             });
@@ -529,7 +686,7 @@
         // wrap an Object3D around the given object
         // so that it is centered at +Y axis
         //
-        function unitize(object, targetSize, objName) {
+        function unitize(object, targetSize) {
 
             // find bounding box of 'object'
             var box3 = new THREE.Box3();
@@ -538,7 +695,6 @@
             size.subVectors(box3.max, box3.min);
             var center = new THREE.Vector3();
             center.addVectors(box3.max, box3.min).multiplyScalar(0.5);
-
             console.log('center: ' + center.x + ', ' + center.y + ', ' + center.z);
             console.log('size: ' + size.x + ', ' + size.y + ', ' + size.z);
 
@@ -551,6 +707,7 @@
             object.position.set(-center.x * scaleSet, 0, -center.z * scaleSet);
 
             object.rotation.y = Math.PI / 2;
+
             // let axis = new THREE.AxesHelper(10);
             // theObject.add(axis);
 
@@ -570,17 +727,61 @@
                     }
                 });
                 if (isOK) {
-                    scene.getObjectByName('switch').position.set(-150, 80, 20);
-                    scene.getObjectByName('Chair').position.set(-115, 0, 65);
-                    scene.getObjectByName('Chair').rotation.y = -Math.PI / 2;
-                    scene.getObjectByName('lamp').position.set(-75, 41, 105);
-                    scene.getObjectByName('lamp').rotation.y = Math.PI * 3 / 4;
+                    //開關中間那條載入完成，要放入pickables
+                    let ceilBtn = ceilLampToggle.mesh.getObjectByName('switchBtn');
+                    ceilBtn.material = new THREE.MeshLambertMaterial({
+                        color: 0xfff4f2
+                    });
+                    let btnShell = ceilLampToggle.mesh.getObjectByName('switch');
+                    btnShell.material = new THREE.MeshLambertMaterial({
+                        color: 0xf9dd9a
+                    });
+                    pickables.push(ceilBtn);
+                    ceilBtn.position.x = -0.38;
+                    let chair = scene.getObjectByName('Chair');
+                    chair.position.set(-90, 0, 40);
+                    chair.rotation.y = -Math.PI / 2;
+                    let bed = scene.getObjectByName('bed');
+                    bed.position.set(135, -0.5, 110.5);
+                    // bed.rotation.y = Math.PI / 2;
+                    //初始化完畢
                     finish = !finish;
                 }
             } else {
                 renderer.render(scene, camera);
             }
             requestAnimationFrame(animate);
+        }
+
+        //抓來用...
+        function onDocumentMouseDown(event) {
+            // PICKING DETAILS: 
+            // convert mouse.xy = [-1,1]^2 (NDC)
+            // unproject (mouse.xy, 1) to a point on the far plane (in world coordinate)
+            // set raycaster (origin, direction)
+            // find intersection objects, (closest first) 
+            // each record as
+            // [ { distance, point, face, faceIndex, object }, ... ]
+
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // find intersections
+            raycaster.setFromCamera(mouse, camera);
+            var intersects = raycaster.intersectObjects(pickables, true);
+            if (intersects.length > 0) {
+                console.log("GET!");
+                let picked = intersects[0].object;
+                if (picked.name == 'deskLampBtn') {
+                    lampToggle.switchToggle(pLight);
+                } else if (picked.name == 'switchBtn') {
+                    ceilLampToggle.switchToggle(
+                        { light: dLight, intensity: dLightIntensity },
+                        { light: aLight, intensity: aLightIntensity });
+                }
+            }
+
         }
     </script>
 </body>
