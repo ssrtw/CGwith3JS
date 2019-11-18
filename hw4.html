@@ -60,6 +60,7 @@
         var lampToggle;
         var ceilLampToggle;
 
+        var lightevent;
         //滑鼠互動變數
         var raycaster;
         var mouse = new THREE.Vector2();
@@ -78,13 +79,17 @@
             }
             switchToggle(...settings) {
                 let btn = this.mesh.getObjectByName('switchBtn');
+                let clock = new THREE.Clock();
                 if (this.powerON) {
                     //切到關燈
                     btn.material.emissive = new THREE.Color('orange');
                     btn.material.emissiveIntensity = 1;
                     btn.position.y = -2;
                     settings.forEach(function (setting) {
-                        setting.light.intensity = 0;
+                        let down = clock.getDelta / 2 * setting.intensity;
+                        while (setting.light.intensity >= 0) {
+                            setting.light.intensity -= down;
+                        }
                     });
                 } else {
                     //切成開燈
@@ -92,7 +97,10 @@
                     btn.material.emissiveIntensity = 0;
                     btn.position.y = 0;
                     settings.forEach(function (setting) {
-                        setting.light.intensity = setting.intensity;
+                        let down = clock.getDelta / 2 * setting.intensity;
+                        while (setting.light.intensity <= setting.intensity) {
+                            setting.light.intensity += down;
+                        }
                     });
                 }
                 this.powerON = !this.powerON;
@@ -127,18 +135,34 @@
                 this.mesh.add(this.btn);
             }
             switchToggle(light) {
+                let clock = new THREE.Clock();
                 if (this.powerON) {
                     //切到關燈
                     this.btn.material.emissive = new THREE.Color('orange');
                     this.btn.material.emissiveIntensity = 1;
                     this.btn.rotation.z = -Math.PI / 12;
-                    light.intensity = 0;
+                    clearInterval(lightevent);
+                    lightevent = setInterval(function () {
+                        if (light.intensity >= 0) {
+                            light.intensity -= 0.02;
+                        } else {
+                            clearInterval(lightevent);
+                        }
+                    }, 200);
                 } else {
                     //切成開燈
                     this.btn.material.emissive = new THREE.Color('0x000000');
                     this.btn.material.emissiveIntensity = 0;
                     this.btn.rotation.z = Math.PI / 12;
-                    light.intensity = 0.2;
+                    let down = clock.getDelta / 2 * 0.2;
+                    clearInterval(lightevent);
+                    lightevent = setInterval(function () {
+                        if (light.intensity <= 0.2) {
+                            light.intensity += 0.02;
+                        } else {
+                            clearInterval(lightevent);
+                        }
+                    }, 200);
                 }
                 this.powerON = !this.powerON;
             }
@@ -187,11 +211,11 @@
             ceilLampToggle = new CeilLampToggle();
             ceilLampToggle.mesh.position.set(-125, 80, 20);
             scene.add(ceilLampToggle.mesh);
-            //床的旁邊也要有一個
-            // ceilLampToggle1 = new CeilLampToggle();
-            // ceilLampToggle1.mesh.position.set(100, 80, 20);
-            // ceilLampToggle1.mesh.rotation.y = Math.PI;
-            // scene.add(ceilLampToggle1.mesh);
+            // 床的旁邊也要有一個
+            ceilLampToggle1 = new CeilLampToggle();
+            ceilLampToggle1.mesh.position.set(100, 80, 20);
+            ceilLampToggle1.mesh.rotation.y = Math.PI;
+            scene.add(ceilLampToggle1.mesh);
 
             //讀取椅子
             readModel("Chair", 'Chair', 55, scene);
@@ -719,6 +743,7 @@
         }
 
         function animate() {
+            console.log("123");
             if (!finish) {
                 let isOK = true;
                 objNameList.forEach(function (name) {
@@ -727,6 +752,7 @@
                     }
                 });
                 if (isOK) {
+                    //書桌旁的室內燈開關
                     //開關中間那條載入完成，要放入pickables
                     let ceilBtn = ceilLampToggle.mesh.getObjectByName('switchBtn');
                     ceilBtn.material = new THREE.MeshLambertMaterial({
@@ -738,6 +764,19 @@
                     });
                     pickables.push(ceilBtn);
                     ceilBtn.position.x = -0.38;
+                    //床旁邊的室內燈開關
+                    //開關中間那條載入完成，要放入pickables
+                    let ceilBtn1 = ceilLampToggle1.mesh.getObjectByName('switchBtn');
+                    ceilBtn1.material = new THREE.MeshLambertMaterial({
+                        color: 0xfff4f2
+                    });
+                    let btnShell1 = ceilLampToggle1.mesh.getObjectByName('switch');
+                    btnShell1.material = new THREE.MeshLambertMaterial({
+                        color: 0xf9dd9a
+                    });
+                    pickables.push(ceilBtn1);
+                    ceilBtn1.position.x = -0.38;
+                    ///////////////////////////////////
                     let chair = scene.getObjectByName('Chair');
                     chair.position.set(-90, 0, 40);
                     chair.rotation.y = -Math.PI / 2;
