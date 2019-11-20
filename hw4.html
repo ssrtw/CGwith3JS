@@ -12,29 +12,38 @@
             margin-right: auto;
             display: block;
             width: 800px;
+            position: absolute;
         }
 
-        /* 增加button間距 */
-        #navbtn button {
-            margin: 0 10px;
+        #navbar {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            margin: 0 auto;
+            color: #ff0000;
+            font-size: 15px;
+        }
+
+        #loading {
+            z-index: 10;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            margin: 0 auto;
+            color: #ffffff;
+            font-size: 40px;
         }
     </style>
 </head>
 
 <body>
-    <!-- <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <span class="navbar-brand">Class, Raycaster, Shadow Map</span>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.html">Home</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav> -->
     <div id="canvas"></div>
+    <div id="loading" class="align-middle">loading...</div>
+    <div id="navbar" class="align-middle">
+        Class, Raycaster, Shadow Map
+        <a class="nav-link" href="index.html">Home</a>
+    </div>
     <script src="vendor/js/jquery-3.3.1.min.js"></script>
     <script src="vendor/js/bootstrap.min.js"></script>
     <script src="vendor/js/KeyboardState.js"></script>
@@ -43,6 +52,7 @@
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script>
+        $("#navbar").hide();
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
         //必要全域變數
@@ -785,6 +795,9 @@
                     }
                 });
                 if (isOK) {
+                    //loading結束
+                    document.getElementById("loading").style.display = "none";
+                    $("#navbar").show();
                     //室內燈開關
                     //開關中間那條載入完成，要放入pickables
                     ceilLampToggles.forEach(function (ceilLampToggle, index) {
