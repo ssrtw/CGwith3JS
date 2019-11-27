@@ -8,6 +8,17 @@
     <link rel="stylesheet" href="vendor/css/bootstrap.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.1/css/all.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
+    <style>
+        .infoImg {
+            display: inline-block;
+            height: 100%;
+            vertical-align: middle;
+        }
+
+        .infoImg img {
+            vertical-align: middle;
+        }
+    </style>
 </head>
 
 <body>
@@ -21,52 +32,103 @@
     <div class="container text-center" style="padding-top:20px;">
         <div class="row">
             <div class="card col-md-6">
-                <sapn style="padding:70px;color:rgb(66, 123, 216)"><i class="fas fa-mail-bulk fa-10x"></i>
-                </sapn>
-                <div class="card-body">
-                    <h5 class="card-title">410612011孫學任</h5>
-                    <p class="card-title">聯絡信箱</p>
-                    <a target="_blank" href="https://mail.google.com/mail/?view=cm&fs=1&to=pixar9899@gmail.com"
-                        class="btn btn-info">Gmail</a>
-                    <a href="mailto:pixar9899@gmail.com" class="btn btn-secondary">Other</a>
+                <div class="infoImg">
+                    <img style="padding:20px;" src="hw1.gif" class="card-img-top">
                 </div>
-            </div>
-            <div class="card col-md-6">
-                <img style="padding:20px;" src="hw1.gif" class="card-img-top">
                 <div class="card-body">
                     <h5 class="card-title">Homework 1</h5>
                     <p class="card-text">time-based animation</p>
                     <a href="hw1.html" class="btn btn-primary">開啟</a>
+                    <button onclick="openBox('hw1')" class="btn btn-info">大圖</a>
                 </div>
             </div>
-            <div class="card col-md-12">
-                <img style="padding:20px;" src="hw2.gif" class="card-img-top">
+            <div class="card col-md-6">
+                <div class="infoImg">
+                    <img style="padding:20px;" src="hw2.gif" class="card-img-top">
+                </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 2</h5>
                     <p class="card-text">Hierarchical Model</p>
                     <a href="hw2.html" class="btn btn-primary">開啟</a>
+                    <button onclick="openBox('hw2')" class="btn btn-info">大圖</a>
                 </div>
             </div>
-            <div class="card col-md-12">
-                <img style="padding:20px;" src="hw3.gif" class="card-img-top">
+            <div class="card col-md-6">
+                <div class="infoImg">
+                    <img style="padding:20px;" src="hw3.gif" class="card-img-top">
+                </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 3</h5>
                     <p class="card-text">OBJ loader, drive, collision</p>
                     <a href="hw3.html" class="btn btn-primary">開啟</a>
+                    <button onclick="openBox('hw3')" class="btn btn-info">大圖</a>
                 </div>
             </div>
-            <div class="card col-md-12">
-                <img style="padding:20px;" src="hw4.gif" class="card-img-top">
+            <div class="card col-md-6">
+                <div class="infoImg">
+                    <img style="padding:20px;" src="hw4.gif" class="card-img-top">
+                </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 4</h5>
                     <p class="card-text">Class, Raycaster, Shadow Map</p>
                     <a href="hw4.html" class="btn btn-primary">開啟</a>
+                    <button onclick="openBox('hw4')" class="btn btn-info">大圖</a>
+                </div>
+            </div>
+            <div class="card col-md-6">
+                <div class="infoImg">
+                    <img style="padding:20px;" src="hw5-1.gif" class="card-img-top">
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Homework 5-1</h5>
+                    <p class="card-text">Basic GLSL</p>
+                    <a href="hw5-1.html" class="btn btn-primary">開啟</a>
+                    <button onclick="openBox('hw5-1')" class="btn btn-info">大圖</a>
+                </div>
+            </div>
+        </div>
+        <hr>
+        <footer class="container">
+            <sapn style="color:rgb(66, 123, 216)">
+                <i class="fas fa-mail-bulk fa-2x"></i>
+            </sapn>
+            410612011孫學任
+            <p class="float-center">聯絡信箱：
+                <a target="_blank"
+                    href="https://mail.google.com/mail/?view=cm&fs=1&to=pixar9899@gmail.com">Gmail</a><span> | </span>
+                <a href="mailto:pixar9899@gmail.com">Other</a></p>
+            </p>
+        </footer>
+    </div>
+    <!-- gif燈箱 -->
+    <div class="modal fade bd-example-modal-xl" id="lightBox" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="gifBox" class="modal-body">
                 </div>
             </div>
         </div>
     </div>
     <script src="vendor/js/jquery-3.3.1.min.js"></script>
     <script src="vendor/js/bootstrap.min.js"></script>
+    <script>
+        $('#lightBox').on('hide.bs.modal', function (e) {
+            setTimeout(() => {
+                $('#gifBox').empty();
+            }, 200);
+        })
+
+        function openBox(name) {
+            $('#gifBox').append('<img style="padding:20px;" src="' + name + '.gif" class="card-img-top">');
+            $('#lightBox').modal('show');
+        }
+    </script>
+    </script>
 </body>
 
 </html>
