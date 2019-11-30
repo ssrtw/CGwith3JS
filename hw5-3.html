@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>HW5-3 Using GLSL shaders in a class</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="vendor/css/bootstrap.min.css">
+    <link href="style.css" rel="stylesheet">
+    <style>
+        #info {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            margin: 0 auto;
+            color: #ff0000;
+            font-size: 15px;
+            z-index: 10;
+            padding-top: 2vh;
+        }
+
+        #canvas {
+            margin: 0 auto;
+            display: block;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">HW5-3 Using GLSL shaders in a class<br>
+    </div>
+    <div id="canvas"></div>
+    <script src="vendor/js/Perlin.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
+
+    <script id="myVertexShader" type="x-shader/x-vertex">
+        uniform int shading;
+        uniform int coordinate;
+        varying vec3 color;
+        varying vec4 objpos;
+        varying vec4 worldpos;
+        varying vec4 eyepos;
+
+        void perVertexShading(vec3 objpos, vec3 worldpos) {
+            if (coordinate == 0) {
+                //物件座標
+                if (objpos.x > 0.0) 
+                    color = vec3 (1,1,1);
+                else
+                    color = vec3 (0,0,0);
+            } else if (coordinate == 1) {
+                //世界座標
+                if (worldpos.x > 0.0) 
+                    color = vec3 (1,1,1);
+                else
+                    color = vec3 (0,0,0);    	
+            } else if (coordinate == 2) {
+                //眼睛座標(直接拿varying變數，於main已經算好)
+                if (eyepos.x > 0.0) 
+                    color = vec3 (1,1,1);
+                else
+                    color = vec3 (0,0,0);    	
+            }
+        }
+        
+        void main() {
+            gl_Position = projectionMatrix* modelViewMatrix * vec4(position, 1.0);
+            objpos = vec4(position, 1.0);
+            worldpos = modelMatrix * vec4(position, 1.0);
+            eyepos = modelViewMatrix * vec4(position, 1.0);
+            if (shading == 0)  // per-vertex shading
+                perVertexShading(position, worldpos.xyz);
+        }
+    </script>
+
+    <script id="myFragmentShader" type="x-shader/x-fragment">
+        uniform int shading;
+        uniform int coordinate;
+        //取得透明度
+        uniform float optical;
+        //用頂點上的色
+        varying vec3 color;
+
+        //傳到fragment像素做處理
+        //物件座標
+        varying vec4 objpos;
+        //世界座標
+        varying vec4 worldpos;
+        //眼睛座標
+        varying vec4 eyepos;
+
+        //要上的色
+        vec3 fragcolor;
+        void main() {
+            if(shading==0){
+                //從Vertex下手
+                fragcolor = color;
+            }else if(shading==1){
+                // your homework
+                //perPixelShading移到這裡
+                //從Pixel下手
+                if (coordinate == 0) {
+                    if (objpos.x > 0.0) 
+                        fragcolor = vec3 (1,1,1);
+                    else
+                        fragcolor = vec3 (0,0,0);
+                } else if (coordinate == 1) {
+                    if (worldpos.x > 0.0) 
+                        fragcolor = vec3 (1,1,1);
+                    else
+                        fragcolor = vec3 (0,0,0);    	
+                } else if (coordinate == 2) {
+                    if (eyepos.x > 0.0) 
+                        fragcolor = vec3 (1,1,1);
+                    else
+                        fragcolor = vec3 (0,0,0);    	
+                }
+            }
+            gl_FragColor = vec4 (fragcolor, optical);
+        }
+    </script>
+
+    <script>
+        //檢查FPS
+        javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
+        const perlin = new Perlin();
+        var scene, renderer, camera;
+        var width, height;
+        var material;
+        var teapots = [];
+        var raycaster;
+        var mouse = new THREE.Vector2();
+        var pickables = [];
+        var clock;
+        class MyTeaPot {
+            //預設每秒轉45度
+            static speed = Math.PI;
+            static subLife = 0.1;
+            static index = 0;
+            constructor(point, material) {
+                if (point === undefined) {
+                    point = new THREE.Vector3(
+                        Math.ceil(Math.random() * 201) - 100,
+                        0,
+                        Math.ceil(Math.random() * 201) - 100
+                    );
+                }
+                if (material === undefined) {
+                    var material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            lightpos: { type: 'v3', value: new THREE.Vector3(0, 30, 20) },
+                            shading: { type: 'i', value: 1 },
+                            coordinate: { type: 'i', value: 0 },
+                            optical: { type: 'f', value: 1.0 }
+                        },
+                        vertexShader: document.getElementById('myVertexShader').textContent,
+                        fragmentShader: document.getElementById('myFragmentShader').textContent,
+                        transparent: true // important!
+                    });
+                }
+                this.mesh = new THREE.Mesh(
+                    new THREE.TeapotBufferGeometry(5),
+                    material
+                )
+                this.mesh.position.copy(point);
+                this.mesh.life = 1;
+                this.mesh.findClass = function () {
+                    return this;
+                }
+                this.mesh.class = "teapot";
+            }
+
+            activeTeapot(deltaTime) {
+                this.mesh.life -= MyTeaPot.subLife * deltaTime;
+                this.mesh.rotation.y += MyTeaPot.speed * deltaTime * this.mesh.life;
+                this.mesh.material.uniforms.optical.value = this.mesh.life;
+            }
+
+            deadTest() {
+                if (this.mesh.life <= 0)
+                    return true;
+                else
+                    return false;
+            }
+        }
+
+        init();
+        animate();
+
+        function init() {
+            clock = new THREE.Clock();
+            width = window.innerWidth;
+            height = window.innerHeight;
+
+            renderer = new THREE.WebGLRenderer({
+                antialias: true
+            });
+            renderer.setSize(width, height);
+            renderer.setClearColor(0x888888);
+            $('#canvas').append(renderer.domElement);
+
+            scene = new THREE.Scene();
+            {
+                const near = 1;
+                const far = 600;
+                const color = 0x227700;
+                let cube = loadCubemap();
+                scene.background = cube;
+                scene.fog = new THREE.Fog(color, near, far);
+            }
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+            camera.position.set(0, 50, 200);
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+            pointLight = new THREE.PointLight(0xffffff);
+            pointLight.position.set(200, 300, 200);
+            scene.add(pointLight);
+            var ambientLight = new THREE.AmbientLight(0x111111);
+            scene.add(ambientLight);
+            /////////////////////////////////////////////////////////////////
+            // let cnt = 5;
+            // for (let i = 0; i < 20; i++) {
+            //     let size = new THREE.Vector3(
+            //         Math.ceil(Math.random() * 30) + 5,
+            //         Math.ceil(Math.random() * 30) + 10,
+            //         Math.ceil(Math.random() * 30) + 5
+            //     )
+            //     let newone = new THREE.Mesh(
+            //         new THREE.BoxGeometry(size.x, size.y, size.z),
+            //         new THREE.MeshPhongMaterial({
+            //             color: 0x888888
+            //         })
+            //     )
+            //     newone.position.set(
+            //         Math.ceil(Math.random() * 200) - 100,
+            //         size.y / 2,
+            //         Math.ceil(Math.random() * 200) - 100
+            //     );
+            //     newone.class = "mountain";
+            //     scene.add(newone);
+            //     pickables.push(newone);
+            // }
+            /////////////////////////////////////////////////////////////////
+            //演算法來源：http://www.stephanbaker.com/post/perlinterrain/
+            //影片：https://www.youtube.com/watch?v=Or19ilef4wE&t=198s
+            var geometry = new THREE.PlaneBufferGeometry(2000, 2000, 256, 256);
+            var terrainMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color("hsl(135,50%,50%)") });
+            var terrain = new THREE.Mesh(geometry, terrainMaterial);
+            terrain.rotation.x = -Math.PI / 2;
+            //振幅
+            var peak = 50;
+            //波長
+            var smoothing = 180;
+            var vertices = terrain.geometry.attributes.position.array;
+            for (var i = 0; i <= vertices.length; i += 3) {
+                vertices[i + 2] = peak * perlin.noise(
+                    (terrain.position.x + vertices[i]) / smoothing,
+                    (terrain.position.z + vertices[i + 1]) / smoothing
+                );
+            }
+            terrain.geometry.computeVertexNormals();
+            terrain.class = "terrain";
+            scene.add(terrain);
+            pickables.push(terrain);
+            /////////////////////////////////////////////////////////////////
+            raycaster = new THREE.Raycaster();
+            document.addEventListener('mousedown', onDocumentMouseDown, false);
+            document.addEventListener('mousemove', onDocumentMouseOver, false);
+            /////////////////////////////////////////////////////////////////
+            material = new THREE.ShaderMaterial({
+                uniforms: {
+                    lightpos: { type: 'v3', value: new THREE.Vector3(0, 30, 20) },
+                    shading: { type: 'i', value: 1 },
+                    coordinate: { type: 'i', value: 0 },
+                    optical: { type: 'f', value: 1.0 }
+                },
+                vertexShader: document.getElementById('myVertexShader').textContent,
+                fragmentShader: document.getElementById('myFragmentShader').textContent,
+                transparent: true // important!
+            });
+        }
+
+        function animate() {
+            //取得目前的時間差，看每個得夠要轉多少角度
+            let delta = clock.getDelta();
+            teapots.forEach(function (obj, index) {
+                //做旋轉與減少生命的動作
+                obj.activeTeapot(delta);
+                if (obj.deadTest()) {
+                    //從場景中移除物件
+                    scene.remove(obj.mesh);
+                    //從陣列中移除物件
+                    teapots.splice(index, 1);
+                    //從pickalbes移除得夠
+                    pickables.forEach(function (pickObj, index) {
+                        if (pickObj === obj.mesh) {
+                            pickables.splice(index, 1);
+                        }
+                    });
+                }
+            })
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        //抓來用...
+        function onDocumentMouseDown(event) {
+            // PICKING DETAILS: 
+            // convert mouse.xy = [-1,1]^2 (NDC)
+            // unproject (mouse.xy, 1) to a point on the far plane (in world coordinate)
+            // set raycaster (origin, direction)
+            // find intersection objects, (closest first) 
+            // each record as
+            // [ { distance, point, face, faceIndex, object }, ... ]
+
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // find intersections
+            raycaster.setFromCamera(mouse, camera);
+            var intersects = raycaster.intersectObjects(pickables, true);
+            if (intersects.length > 0) {
+                let picked = intersects[0];
+                if (picked.object.class == "terrain") {
+                    let newTeaPot = new MyTeaPot(picked.point, new THREE.ShaderMaterial().copy(material));
+                    teapots.push(newTeaPot);
+                    pickables.push(newTeaPot.mesh);
+                    scene.add(newTeaPot.mesh);
+                } else {
+                    picked.object.findClass().life = 1;
+                }
+            }
+        }
+
+        //這個也抓來直接用...
+        function onDocumentMouseOver(event) {
+            event.preventDefault();  // may not be necessary
+            mouse.x = (event.clientX / width) * 2 - 1;
+            mouse.y = -(event.clientY / height) * 2 + 1;
+
+            // find intersections
+            raycaster.setFromCamera(mouse, camera);
+            var intersects = raycaster.intersectObjects(pickables, true);
+            if (intersects.length > 0)
+                document.body.style.cursor = 'pointer';
+            else
+                document.body.style.cursor = 'auto';
+        }
+
+        function loadCubemap() {
+
+            var path = "vendor/textures/cubeMap2/";
+            var format = '.png';
+            var urls = [
+                path + 'posx' + format, path + 'negx' + format,
+                path + 'posy' + format, path + 'negy' + format,
+                path + 'posz' + format, path + 'negz' + format
+            ];
+            var loader = new THREE.CubeTextureLoader();
+            var cubeMap = loader.load(urls);
+            cubeMap.format = THREE.RGBFormat;
+            return cubeMap;
+
+        }
+    </script>
+</body>
+
+</html>
