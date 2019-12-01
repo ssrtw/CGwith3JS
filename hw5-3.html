@@ -14,7 +14,7 @@
             text-align: center;
             margin: 0 auto;
             color: #ff0000;
-            font-size: 15px;
+            font-size: 20px;
             z-index: 10;
             padding-top: 2vh;
         }
@@ -27,6 +27,10 @@
             height: 100%;
         }
 
+        #survive {
+            display: inline;
+        }
+
         body {
             overflow: hidden;
         }
@@ -35,6 +39,8 @@
 
 <body>
     <div id="info">HW5-3 Using GLSL shaders in a class<br>
+        <a href="index.html">home</a><br>
+        <span style="color: aqua;font-size: 20px;">有<div id="survive"></div>個茶壺在場景中</span>
     </div>
     <div id="canvas"></div>
     <script src="vendor/js/Perlin.js"></script>
@@ -42,8 +48,9 @@
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
+    <script src="vendor/js/text2D.js"></script>
 
-    <script id="myVertexShader" type="x-shader/x-vertex">
+    <script id="teapotVertexShader" type="x-shader/x-vertex">
         uniform int shading;
         uniform int coordinate;
         varying vec3 color;
@@ -83,7 +90,7 @@
         }
     </script>
 
-    <script id="myFragmentShader" type="x-shader/x-fragment">
+    <script id="teapotFragmentShader" type="x-shader/x-fragment">
         uniform int shading;
         uniform int coordinate;
         //取得透明度
@@ -137,24 +144,23 @@
         var scene, renderer, camera;
         var width, height;
         var material;
+        var terrain;
         var teapots = [];
         var raycaster;
         var mouse = new THREE.Vector2();
         var pickables = [];
         var clock;
+        var poi = new THREE.Vector3();
+        var n = new THREE.Vector3();
+        var la = new THREE.Vector3();
+        /////////////////////////////////////////////////////////////////
         class MyTeaPot {
             //預設每秒轉45度
-            static speed = Math.PI;
-            static subLife = 0.1;
-            static index = 0;
+            static speed = Math.PI * 8;
+            static subLife = 0.25;
+            static count = 0;
+
             constructor(point, material) {
-                if (point === undefined) {
-                    point = new THREE.Vector3(
-                        Math.ceil(Math.random() * 201) - 100,
-                        0,
-                        Math.ceil(Math.random() * 201) - 100
-                    );
-                }
                 if (material === undefined) {
                     var material = new THREE.ShaderMaterial({
                         uniforms: {
@@ -163,31 +169,66 @@
                             coordinate: { type: 'i', value: 0 },
                             optical: { type: 'f', value: 1.0 }
                         },
-                        vertexShader: document.getElementById('myVertexShader').textContent,
-                        fragmentShader: document.getElementById('myFragmentShader').textContent,
+                        vertexShader: document.getElementById('teapotVertexShader').textContent,
+                        fragmentShader: document.getElementById('teapotFragmentShader').textContent,
                         transparent: true // important!
                     });
                 }
-                this.mesh = new THREE.Mesh(
-                    new THREE.TeapotBufferGeometry(5),
-                    material
-                )
+                this.mesh = new THREE.Object3D();
                 this.mesh.position.copy(point);
-                this.mesh.life = 1;
-                this.mesh.findClass = function () {
-                    return this;
-                }
                 this.mesh.class = "teapot";
+                //放入茶壺
+                this.teapot = this.createTeapot(material);
+                this.mesh.add(this.teapot);
+                //////////////////////////////////////////////////
+                this.lifeText = this.createLifeText();
+                MyTeaPot.count++;
+            }
+
+            createLifeText() {
+                let Text2D = THREE_Text.MeshText2D;
+                let textAlign = THREE_Text.textAlign;
+
+                let lifeText = new Text2D(this.teapot.life, {
+                    align: textAlign.center,
+                    font: '12px Arial',
+                    fillStyle: '#00ff00',
+                    antialias: true
+                });
+                return lifeText;
+            }
+
+            createTeapot(material) {
+                let teapotGeom = new THREE.TeapotBufferGeometry(5);
+                teapotGeom.translate(0, 0.5, 0);
+                //做旋轉，三軸方向已改變
+                teapotGeom.rotateX(Math.PI * 0.5);
+                //往上-Z，往前+Y，X不變
+                ///////////////////////////////////////////////
+                let teapot = new THREE.Mesh(teapotGeom, material);
+                let box3 = new THREE.Box3();
+                box3.setFromObject(teapot);
+                let teapotSize = new THREE.Vector3().subVectors(box3.max, box3.min);
+                teapot.position.z = teapotSize.z / 2;
+                teapot.life = 1;
+                return teapot;
             }
 
             activeTeapot(deltaTime) {
-                this.mesh.life -= MyTeaPot.subLife * deltaTime;
-                this.mesh.rotation.y += MyTeaPot.speed * deltaTime * this.mesh.life;
-                this.mesh.material.uniforms.optical.value = this.mesh.life;
+                this.teapot.life -= MyTeaPot.subLife * deltaTime;
+                this.teapot.rotation.z -= MyTeaPot.speed * deltaTime * this.teapot.life;
+                this.teapot.material.uniforms.optical.value = this.teapot.life;
+                this.lifeText.text = (this.teapot.life * 100).toFixed(0);
+                if (this.teapot.life >= 0.75)
+                    this.lifeText.fillStyle = "#00ff00";
+                else if (this.teapot.life < 0.75 && this.teapot.life >= 0.5)
+                    this.lifeText.fillStyle = "#ff00ff";
+                else if (this.teapot.life < 0.5)
+                    this.lifeText.fillStyle = "#ff0000";
             }
 
             deadTest() {
-                if (this.mesh.life <= 0)
+                if (this.teapot.life <= 0)
                     return true;
                 else
                     return false;
@@ -210,16 +251,11 @@
             $('#canvas').append(renderer.domElement);
 
             scene = new THREE.Scene();
-            {
-                const near = 1;
-                const far = 600;
-                const color = 0x227700;
-                let cube = loadCubemap();
-                scene.background = cube;
-                scene.fog = new THREE.Fog(color, near, far);
-            }
+            let cube = loadCubemap("vendor/textures", "cubeMap3");
+            scene.background = cube;
+
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
-            camera.position.set(0, 50, 200);
+            camera.position.set(0, 200, 500);
             camera.lookAt(new THREE.Vector3(0, 0, 0));
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -230,47 +266,7 @@
             var ambientLight = new THREE.AmbientLight(0x111111);
             scene.add(ambientLight);
             /////////////////////////////////////////////////////////////////
-            // let cnt = 5;
-            // for (let i = 0; i < 20; i++) {
-            //     let size = new THREE.Vector3(
-            //         Math.ceil(Math.random() * 30) + 5,
-            //         Math.ceil(Math.random() * 30) + 10,
-            //         Math.ceil(Math.random() * 30) + 5
-            //     )
-            //     let newone = new THREE.Mesh(
-            //         new THREE.BoxGeometry(size.x, size.y, size.z),
-            //         new THREE.MeshPhongMaterial({
-            //             color: 0x888888
-            //         })
-            //     )
-            //     newone.position.set(
-            //         Math.ceil(Math.random() * 200) - 100,
-            //         size.y / 2,
-            //         Math.ceil(Math.random() * 200) - 100
-            //     );
-            //     newone.class = "mountain";
-            //     scene.add(newone);
-            //     pickables.push(newone);
-            // }
-            /////////////////////////////////////////////////////////////////
-            //演算法來源：http://www.stephanbaker.com/post/perlinterrain/
-            //影片：https://www.youtube.com/watch?v=Or19ilef4wE&t=198s
-            var geometry = new THREE.PlaneBufferGeometry(2000, 2000, 256, 256);
-            var terrainMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color("hsl(135,50%,50%)") });
-            var terrain = new THREE.Mesh(geometry, terrainMaterial);
-            terrain.rotation.x = -Math.PI / 2;
-            //振幅
-            var peak = 50;
-            //波長
-            var smoothing = 180;
-            var vertices = terrain.geometry.attributes.position.array;
-            for (var i = 0; i <= vertices.length; i += 3) {
-                vertices[i + 2] = peak * perlin.noise(
-                    (terrain.position.x + vertices[i]) / smoothing,
-                    (terrain.position.z + vertices[i + 1]) / smoothing
-                );
-            }
-            terrain.geometry.computeVertexNormals();
+            terrain = createTerrain();
             terrain.class = "terrain";
             scene.add(terrain);
             pickables.push(terrain);
@@ -286,20 +282,67 @@
                     coordinate: { type: 'i', value: 0 },
                     optical: { type: 'f', value: 1.0 }
                 },
-                vertexShader: document.getElementById('myVertexShader').textContent,
-                fragmentShader: document.getElementById('myFragmentShader').textContent,
+                vertexShader: document.getElementById('teapotVertexShader').textContent,
+                fragmentShader: document.getElementById('teapotFragmentShader').textContent,
                 transparent: true // important!
             });
         }
 
+        function createTerrain() {
+            //演算法來源：http://www.stephanbaker.com/post/perlinterrain/
+            //影片：https://www.youtube.com/watch?v=Or19ilef4wE&t=198s
+            let map = new THREE.TextureLoader().load('vendor/textures/grasslight.jpg');
+            map.wrapS = THREE.RepeatWrapping;
+            map.wrapT = THREE.RepeatWrapping;
+            map.repeat.set(20, 20);
+            var geometry = new THREE.PlaneBufferGeometry(800, 800, 256, 256);
+            var terrainMaterial = new THREE.MeshLambertMaterial({ map: map });
+            let terrain = new THREE.Mesh(geometry, terrainMaterial);
+            terrain.rotation.x = -Math.PI / 2;
+            //峰值
+            var peak = 50;
+            //平滑化
+            var smoothing = 180;
+            var vertices = terrain.geometry.attributes.position.array;
+            for (var i = 0; i <= vertices.length; i += 3) {
+                vertices[i + 2] = peak * perlin.noise(
+                    (vertices[i]) / smoothing,
+                    (vertices[i + 1]) / smoothing
+                );
+                // if (i % 3 == 0 && Math.random() >= 0.9) {
+                //     let tree = new THREE.Mesh(
+                //         new THREE.BoxGeometry(2, 10, 2),
+                //         new THREE.MeshNormalMaterial()
+                //     );
+                //     scene.add(tree);
+                //     tree.position.set(-vertices[i], vertices[i + 2], vertices[i + 1]);
+                // }
+            }
+            terrain.geometry.computeVertexNormals();
+            return terrain;
+        }
+
         function animate() {
+            teapotAnimate();
+            ///////////////////////
+            $('#survive').text(MyTeaPot.count);
+            ///////////////////////
+            render();
+        }
+
+        function teapotAnimate() {
+            let groundShadow = camera.position.clone();
+            groundShadow.y = 0;
+            ///////////////////////
             //取得目前的時間差，看每個得夠要轉多少角度
             let delta = clock.getDelta();
             teapots.forEach(function (obj, index) {
                 //做旋轉與減少生命的動作
                 obj.activeTeapot(delta);
+                obj.lifeText.lookAt(groundShadow);
                 if (obj.deadTest()) {
                     //從場景中移除物件
+                    scene.remove(obj.lifeText);
                     scene.remove(obj.mesh);
                     //從陣列中移除物件
                     teapots.splice(index, 1);
@@ -309,8 +352,12 @@
                             pickables.splice(index, 1);
                         }
                     });
+                    MyTeaPot.count--;
                 }
             })
+        }
+
+        function render() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
@@ -334,13 +381,27 @@
             var intersects = raycaster.intersectObjects(pickables, true);
             if (intersects.length > 0) {
                 let picked = intersects[0];
+                console.log(picked);
                 if (picked.object.class == "terrain") {
-                    let newTeaPot = new MyTeaPot(picked.point, new THREE.ShaderMaterial().copy(material));
+                    //////////////////////////////
+                    let obj = picked.object;
+                    poi.copy(picked.point);
+                    n.copy(picked.face.normal);
+                    n.transformDirection(terrain.matrixWorld);
+                    n.multiplyScalar(20);
+                    la.copy(poi).add(n);
+                    let newTeaPot = new MyTeaPot(poi, new THREE.ShaderMaterial().copy(material));
+                    newTeaPot.mesh.lookAt(la);
+                    //////////////////////////////
                     teapots.push(newTeaPot);
                     pickables.push(newTeaPot.mesh);
                     scene.add(newTeaPot.mesh);
+                    scene.add(newTeaPot.lifeText);
+                    newTeaPot.lifeText.position.set(poi.x, poi.y + 20, poi.z);
                 } else {
-                    picked.object.findClass().life = 1;
+                    //沒有點到山脈就是點到茶壺
+                    //這邊的object就是茶壺本身
+                    picked.object.life = 1;
                 }
             }
         }
@@ -354,15 +415,16 @@
             // find intersections
             raycaster.setFromCamera(mouse, camera);
             var intersects = raycaster.intersectObjects(pickables, true);
-            if (intersects.length > 0)
+            if (intersects.length > 0) {
                 document.body.style.cursor = 'pointer';
-            else
+            }
+            else {
                 document.body.style.cursor = 'auto';
+            }
         }
 
-        function loadCubemap() {
-
-            var path = "vendor/textures/cubeMap2/";
+        function loadCubemap(path, folderName) {
+            var path = path + "/" + folderName + "/";
             var format = '.png';
             var urls = [
                 path + 'posx' + format, path + 'negx' + format,
