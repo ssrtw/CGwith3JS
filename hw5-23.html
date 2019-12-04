@@ -3,7 +3,7 @@
 <html>
 
 <head>
-    <title>HW5-3 Using GLSL shaders in a class</title>
+    <title>HW5-2 5-3 Gooch Shaded Teapot | Using GLSL shaders in a class</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="vendor/css/bootstrap.min.css">
     <link href="style.css" rel="stylesheet">
@@ -38,14 +38,14 @@
 </head>
 
 <body>
-    <div id="info">HW5-3 Using GLSL shaders in a class<br>
+    <div id="info">HW5-2 5-3 Gooch Shaded Teapot | Using GLSL shaders in a class<br>
         <a href="index.html">home</a><br>
         <span style="color: aqua;font-size: 20px;">有<div id="survive">0</div>個茶壺在場景中</span><br>
         Shader Type:
         <select id='shader'>
-            <option value="doubleColor" selected>DoubleColor</option>
             <option value="matcap">matcap</option>
             <option value="cartoon">cartoon</option>
+            <option value="gooch">gooch</option>
         </select>
     </div>
     <div id="canvas"></div>
@@ -119,90 +119,41 @@
         }
     </script>
 
-    <script id="teapotVertexShader" type="x-shader/x-vertex">
-        uniform int shading;
-        uniform int coordinate;
-        varying vec3 color;
-        varying vec4 objpos;
-        varying vec4 worldpos;
+    <script id="goochVertexShader" type="x-shader/x-vertex">
+        uniform vec3 lightpos;  // world coordinate
+        varying vec3 eyelightdir;
+        varying vec3 eyenormal;
+        
         varying vec4 eyepos;
-
-        void perVertexShading(vec3 objpos, vec3 worldpos) {
-            if (coordinate == 0) {
-                //物件座標
-                if (objpos.x > 0.0) 
-                    color = vec3 (1,1,1);
-                else
-                    color = vec3 (0,0,0);
-            } else if (coordinate == 1) {
-                //世界座標
-                if (worldpos.x > 0.0) 
-                    color = vec3 (1,1,1);
-                else
-                    color = vec3 (0,0,0);    	
-            } else if (coordinate == 2) {
-                //眼睛座標(直接拿varying變數，於main已經算好)
-                if (eyepos.x > 0.0) 
-                    color = vec3 (1,1,1);
-                else
-                    color = vec3 (0,0,0);    	
-            }
-        }
         
         void main() {
-            gl_Position = projectionMatrix* modelViewMatrix * vec4(position, 1.0);
-            objpos = vec4(position, 1.0);
-            worldpos = modelMatrix * vec4(position, 1.0);
-            eyepos = modelViewMatrix * vec4(position, 1.0);
-            if (shading == 0)  // per-vertex shading
-                perVertexShading(position, worldpos.xyz);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    
+            eyepos = modelViewMatrix * vec4 (position, 1.0);
+            vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
+            eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
+            eyenormal = normalMatrix * normal;
         }
     </script>
 
-    <script id="teapotFragmentShader" type="x-shader/x-fragment">
-        uniform int shading;
-        uniform int coordinate;
-        //取得透明度
-        uniform float opacity;
-        //用頂點上的色
-        varying vec3 color;
-
-        //傳到fragment像素做處理
-        //物件座標
-        varying vec4 objpos;
-        //世界座標
-        varying vec4 worldpos;
-        //眼睛座標
+    <script id="goochFragmentShader" type="x-shader/x-fragment">
+        varying vec3 eyelightdir;
+        varying vec3 eyenormal;
         varying vec4 eyepos;
 
-        //要上的色
-        vec3 fragcolor;
+        uniform float opacity;
+        uniform vec3 kcool; 
+        uniform vec3 kwarm;
+        
         void main() {
-            if(shading==0){
-                //從Vertex下手
-                fragcolor = color;
-            }else if(shading==1){
-                // your homework
-                //perPixelShading移到這裡
-                //從Pixel下手
-                if (coordinate == 0) {
-                    if (objpos.x > 0.0) 
-                        fragcolor = vec3 (1,1,1);
-                    else
-                        fragcolor = vec3 (0,0,0);
-                } else if (coordinate == 1) {
-                    if (worldpos.x > 0.0) 
-                        fragcolor = vec3 (1,1,1);
-                    else
-                        fragcolor = vec3 (0,0,0);    	
-                } else if (coordinate == 2) {
-                    if (eyepos.x > 0.0) 
-                        fragcolor = vec3 (1,1,1);
-                    else
-                        fragcolor = vec3 (0,0,0);    	
-                }
-            }
-            gl_FragColor = vec4 (fragcolor, opacity);
+            float lDotn = dot (normalize (eyenormal), normalize (eyelightdir));    
+            
+            vec3 h = normalize(-normalize (eyepos.xyz) + normalize (eyelightdir));
+            float shininess = 40.;    
+            vec3 specular = pow (dot (eyenormal, h), shininess) *vec3 (1,1,1);
+            
+            float k = (1. + lDotn)/2.;
+            gl_FragColor = vec4(mix (kcool, kwarm, k) + specular, opacity); // built-in: mix
         }
     </script>
 
@@ -212,17 +163,22 @@
         const perlin = new Perlin();
         var scene, renderer, camera;
         var width, height;
+        //////////////////////
         var terrain;
         var teapots = [];
         var raycaster;
         var mouse = new THREE.Vector2();
         var pickables = [];
         var clock;
+        //////////////////////
         //新建茶壺的位置方向使用
         var poi = new THREE.Vector3();
         var n = new THREE.Vector3();
         var la = new THREE.Vector3();
         var isDragging = false;
+        //////////////////////
+        var kd, byab;
+        var pointLight;
         /////////////////////////////////////////////////////////////////
         class MyTeaPot {
             //預設每秒轉45度
@@ -249,7 +205,7 @@
                 let lifeText = new Text2D(this.teapot.life, {
                     align: textAlign.center,
                     font: '15px Arial',
-                    fillStyle: '#00ff00',
+                    fillStyle: '#3a8be8',
                     antialias: true
                 });
                 return lifeText;
@@ -271,17 +227,20 @@
                 return teapot;
             }
 
-            activeTeapot(deltaTime) {
+            activeTeapot(deltaTime, light) {
                 this.teapot.life -= MyTeaPot.subLife * deltaTime;
                 this.teapot.rotation.z -= MyTeaPot.speed * deltaTime * this.teapot.life;
                 this.teapot.material.uniforms.opacity.value = this.teapot.life;
                 this.lifeText.text = (this.teapot.life * 100).toFixed(0);
                 if (this.teapot.life >= 0.75)
-                    this.lifeText.fillStyle = "#00ff00";
+                    this.lifeText.fillStyle = "#3a8be8";
                 else if (this.teapot.life < 0.75 && this.teapot.life >= 0.5)
                     this.lifeText.fillStyle = "#ff00ff";
                 else if (this.teapot.life < 0.5)
                     this.lifeText.fillStyle = "#ff0000";
+                if (this.teapot.material.lightNeed) {
+                    this.teapot.material.uniforms.lightpos.value = light.position;
+                }
             }
 
             deadTest() {
@@ -316,9 +275,13 @@
             camera.lookAt(new THREE.Vector3(0, 0, 0));
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
-
+            /////////////////////////////////////////////////////////////////
+            pointLight = new THREE.PointLight(0xffffff, 1.1);
+            pointLight.angle = 0;
+            scene.add(pointLight);
+            scene.add(new THREE.PointLightHelper(pointLight, 5));
             // directional light
-            dLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dLight = new THREE.DirectionalLight(0xffffff, 0.4);
             dLight.position.set(0, 500, 0);
             dLight.castShadow = true;
             dLight.shadow.camera.left = -500;
@@ -339,6 +302,14 @@
             terrain.class = "terrain";
             scene.add(terrain);
             pickables.push(terrain);
+            /////////////////////////////////////////////////////////////////
+            kd = new THREE.Vector3(163, 113, 5).multiplyScalar(1 / 255);
+            byab = {
+                blue: 0.4,
+                yellow: 0.4,
+                alpha: 0.2,
+                beta: 0.6
+            }
             /////////////////////////////////////////////////////////////////
             raycaster = new THREE.Raycaster();
             document.getElementById("canvas").addEventListener('mousedown', onDocumentMouseDown, false);
@@ -367,23 +338,20 @@
                     (vertices[i]) / smoothing,
                     (vertices[i + 1]) / smoothing
                 );
-                //還想種樹
-                // if (i % 3 == 0 && Math.random() >= 0.9) {
-                //     let tree = new THREE.Mesh(
-                //         new THREE.BoxGeometry(2, 10, 2),
-                //         new THREE.MeshNormalMaterial()
-                //     );
-                //     scene.add(tree);
-                //     tree.position.set(-vertices[i], vertices[i + 2], vertices[i + 1]);
-                // }
             }
             terrain.geometry.computeVertexNormals();
             return terrain;
         }
 
         function animate() {
+            turnPointLight(200, 100, 0.01);
             teapotAnimate();
             render();
+        }
+
+        function turnPointLight(radius, height, speed) {
+            pointLight.position.set(radius * Math.cos(pointLight.angle), height, radius * Math.sin(pointLight.angle));
+            pointLight.angle += speed;
         }
 
         function teapotAnimate() {
@@ -394,7 +362,7 @@
             let delta = clock.getDelta();
             teapots.forEach(function (obj, index) {
                 //做旋轉與減少生命的動作
-                obj.activeTeapot(delta);
+                obj.activeTeapot(delta, pointLight);
                 obj.lifeText.lookAt(groundShadow);
                 if (obj.deadTest()) {
                     //從場景中移除物件
@@ -461,7 +429,7 @@
                     pickables.push(newTeaPot.mesh);
                     scene.add(newTeaPot.mesh);
                     scene.add(newTeaPot.lifeText);
-                    newTeaPot.lifeText.position.set(poi.x, poi.y + 20, poi.z);
+                    newTeaPot.lifeText.position.set(poi.x, poi.y + 30, poi.z);
                     $('#survive').text(MyTeaPot.count);
                 } else {
                     //沒有點到山脈就是點到茶壺
@@ -510,20 +478,6 @@
         function createNewShader(type) {
             let material;
             switch (type) {
-                case "doubleColor":
-                    //doubleColor
-                    material = new THREE.ShaderMaterial({
-                        uniforms: {
-                            lightpos: { type: 'v3', value: new THREE.Vector3(0, 30, 20) },
-                            shading: { type: 'i', value: 1 },
-                            coordinate: { type: 'i', value: 0 },
-                            opacity: { type: 'f', value: 1.0 }
-                        },
-                        vertexShader: document.getElementById('teapotVertexShader').textContent,
-                        fragmentShader: document.getElementById('teapotFragmentShader').textContent,
-                        transparent: true // important!
-                    });
-                    break;
                 case "cartoon":
                     //cartoonShader
                     material = new THREE.ShaderMaterial({
@@ -537,6 +491,7 @@
                         fragmentShader: document.getElementById('toonFragmentShader').textContent,
                         transparent: true // important!
                     });
+                    material.lightNeed = true;
                     break;
                 case "matcap":
                     let loader = new THREE.TextureLoader();
@@ -552,7 +507,25 @@
                         flatShading: THREE.SmoothShading,
                         transparent: true // important!
                     });
+                    material.lightNeed = false;
                     break;
+                case "gooch":
+                    let kblue = new THREE.Vector3(0, 0, byab.blue);
+                    let kyellow = new THREE.Vector3(byab.yellow, byab.yellow, 0);
+                    let kcool = kd.clone().multiplyScalar(byab.alpha).add(kblue);
+                    let kwarm = kd.clone().multiplyScalar(byab.beta).add(kyellow);
+                    material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            lightpos: { type: 'v3', value: new THREE.Vector3() },
+                            kcool: { type: 'v3', value: kcool },
+                            kwarm: { type: 'v3', value: kwarm },
+                            opacity: { type: 'f', value: 1.0 }
+                        },
+                        vertexShader: document.getElementById('goochVertexShader').textContent,
+                        fragmentShader: document.getElementById('goochFragmentShader').textContent,
+                        transparent: true // important!
+                    });
+                    material.lightNeed = true;
             }
             return material;
         }
