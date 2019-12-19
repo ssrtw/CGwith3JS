@@ -161,8 +161,8 @@
         uniform int imageSize;
         varying vec2 vUv; 
         void main() { 
-            float step_w = 1.0/float(imageSize); 
-            float step_h = 1.0/float(imageSize); 
+            float step_w = 1.0/float(imageSize);
+            float step_h = 1.0/float(imageSize);
             // Laplace filter
             float kernel[9]; 
             kernel[0] = kernel[2] = kernel[6] = kernel[8] = 0.0/1.0; 
@@ -183,7 +183,7 @@
             if ((sum.r+sum.g+sum.b)/3.0 < 0.1) // if close to (0,0,0)
                 discard;
             else 
-                gl_FragColor = vec4 (0.95,0.95,0.5, 1.0); 
+                gl_FragColor = vec4 (0,0,0, 1.0); 
         }
     </script>
 
@@ -200,7 +200,7 @@
         varying vec2 vUv;
         void main() {
             vec3 color = texture2D (texture, vUv).rgb;
-            if (color.r >= 0.95 && color.g >= 0.95 && color.b <= 0.05)  // close to (1,1,0)
+            if (color.r <= 0.05 && color.g >= 0.95 && color.b <= 0.05)  // close to (1,1,0)
             discard;
             else
             gl_FragColor = vec4 (color, 1);
@@ -498,7 +498,6 @@
             teapotClone.material = material;
             sceneRegular.add(teapotClone);
 
-            //假裝光源從正上方打下來
             teapotClone.material.uniforms.lightpos.value.set(-60, 100, 60);
             //////////////////////
             renderTarget_whole = new THREE.WebGLRenderTarget(512, 512);
@@ -971,7 +970,7 @@
             renderer.render(sceneGrey, camera);
 
 
-            material_shh.uniforms.imageSize.value = 64;
+            material_shh.uniforms.imageSize.value = 128;
             // this value can alter the width of silhouette !!
             // 1024: original width
             // 512, 256, 128, ...: wider silhouette
@@ -983,7 +982,7 @@
 
             // sceneRTT: fullQuad + filter (discard "near black" fragments)
             renderer.setRenderTarget(renderTarget_whole);
-            renderer.setClearColor(0xffff00);  // yellow "magic" background ... to be cutout
+            renderer.setClearColor(0x00ff00);  // yellow "magic" background ... to be cutout
             renderer.render(sceneRTT, cameraRTT);  // produce outline
 
             // overlay the lit torusKnot
@@ -991,7 +990,8 @@
 
             ///////// final texture completed (except boundary removal)  
             let pz = new THREE.Vector3(0, 0, 1);
-            let point = camera.position.clone().sub(teapot.position).projectOnPlane(planeXX.position);
+            let py = new THREE.Vector3(0, 1, 0);
+            let point = camera.position.clone().sub(planeXX.position).projectOnPlane(py);
             let angle = point.angleTo(pz);
             let test = new THREE.Vector3().crossVectors(pz, point);
             if (test.y > 0) {
