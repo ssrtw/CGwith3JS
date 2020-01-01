@@ -12,8 +12,8 @@ function onProgress(xhr) {
 
 function loadMiku(scene) {
     mikuPoseHelper = new MMDAnimationHelper();
-    var modelFile = "../vendor/models/miku/miku.pmx",
-        vpdFile = "../vendor/models/miku/pose.vpd";
+    var modelFile = "./vendor/models/miku/miku.pmx",
+        vpdFile = "./vendor/models/miku/pose.vpd";
     var loader = new THREE.MMDLoader();
     loader.load(modelFile, function(object) {
         mikuObj = object;
