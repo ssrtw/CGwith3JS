@@ -44,7 +44,7 @@
         HW 6 Filter, Render Target, Normal Map
         <a class="nav-link" href="index.html">Home</a>
     </div>
-    <script src="vendor/js/jquery-3.3.1.min.js"></script>
+    <script src="./vendor/js/jquery-3.3.1.min.js"></script>
     <script src="https://threejs.org/build/three.min.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
@@ -52,7 +52,56 @@
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
     <!--use computeTangents-->
     <script src="https://raw.githack.com/mrdoob/three.js/master/examples/js/utils/BufferGeometryUtils.js"></script>
+    <!--text-->
+    <script src="./vendor/js/text2D.js"></script>
+    <!--MMD-->
+    <!-- <script src="js/libs/ammo.js"></script> -->
+    <script src="./vendor/js/MMDParse.js"></script>
+    <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MMDLoader.js"></script>
+    <script type="module"
+        src="https://raw.githack.com/mrdoob/three.js/dev/examples/jsm/animation/MMDAnimationHelper.js"></script>
 
+    <!--Mosaic-start-->
+    <script id="vs-mosaic" type="x-shader/x-vertex">
+        varying vec2 vUv; 
+        void main() { 
+            gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+            vUv = uv; 
+        }
+    </script>
+    <script id="fs-mosaic" type="x-shader/x-fragment">
+        uniform sampler2D texture; 
+        varying vec2 vUv; 
+        uniform float gran;
+        vec2 vUvm;
+        uniform vec2 headNDC;
+        uniform float headSize;
+        uniform bool front;
+
+        void main() {
+            if(front){
+                float d = distance (headNDC, vUv);
+                float borderWidth = headSize*0.1; 
+                if (d < headSize) {
+                    vUvm = floor (vUv/gran)*gran;
+                    gl_FragColor = texture2D(texture, vUvm);
+                } else if (d < headSize+borderWidth) {
+                    //馬賽克外圈的顏色
+                    gl_FragColor = vec4(1,0.0784313725,0.576470588,1);
+                } else {
+                    vUvm = vUv;
+                    gl_FragColor = texture2D(texture, vUvm);
+                }
+            }
+            else{
+                //如果看不到臉直接把材質貼回去
+                gl_FragColor = texture2D(texture, vUv);
+            }
+        }
+    </script>
+    <!--Mosaic-end-->
+
+    <!--海報-start-->
     <script id="vs-texSwap" type="x-shader/x-vertex">
         uniform int which; // 0, 1, 2, 3
         varying vec2 vUv; 
@@ -171,50 +220,9 @@
             gl_FragColor = vec4( vec3(ndotl), 1 );
         }
     </script>
+    <!--海報-end-->
 
-    <script id="toonVertexShader" type="x-shader/x-vertex">
-        uniform vec3 lightpos;
-        varying float ndotl;
-        varying vec3 lightdir;
-        varying vec3 eyenorm;
-        varying vec2 vUv;
-      
-        void main() {
-            gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
-            vUv = uv;
-            //vec4 worldpos = modelMatrix * vec4 (position, 1.0);
-            //ndotl = dot (normalize(lightpos.xyz - worldpos.xyz), normal);
-            vec4 eyepos = modelViewMatrix * vec4 (position, 1.0);
-            vec4 lighteye = viewMatrix * vec4 (lightpos, 1.0);
-            lightdir = lighteye.xyz - eyepos.xyz;
-            eyenorm = normalMatrix * normal;
-        }
-    </script>
-    <script id="toonFragmentShader" type="x-shader/x-fragment">
-        varying float ndotl;
-        varying vec3 lightdir;
-        varying vec3 eyenorm;
-        uniform sampler2D mytex;
-        varying vec2 vUv;
-        uniform vec3 uniColor;
-
-        void main() {
-            float nn = dot (normalize(lightdir), normalize(eyenorm));
-            if (nn > 0.8) {
-                nn= 1.0;
-            } else if (nn > 0.6) {
-                nn = 0.6;
-            } else {
-                nn = 0.2;
-            }
-
-            // vec4 texColor = texture2D (mytex, vUv);
-            // gl_FragColor = nn*texColor;
-
-            gl_FragColor = vec4 (nn *uniColor, 1.0);
-        }
-    </script>
-
+    <!--灰階場景-start-->
     <script id="mono-vs" type="x-shader/x-vertex">
         varying vec2 vUv;
         void main(){
@@ -266,10 +274,11 @@
             gl_FragColor = vec4 (color,1);
         }
     </script>
+    <!--灰階場景-end-->
 
+    <!--teapotShader-start-->
     <!-- shader for Lapace filter -->
     <!-- with background discard  -->
-
     <script id="vsFilter" type="x-shader/x-vertex">
         varying vec2 vUv; 
         void main() { 
@@ -321,21 +330,219 @@
         varying vec2 vUv;
         void main() {
             vec3 color = texture2D (texture, vUv).rgb;
-            if (color.r <= 0.05 && color.g >= 0.95 && color.b <= 0.05)  // close to (1,1,0)
+            if (color.r <= 0.05 && color.g >= 0.95 && color.b <= 0.05)  // close to (0,1,0)
             discard;
             else
             gl_FragColor = vec4 (color, 1);
         }
     </script>
-    <script>
+    <script id="toonVertexShader" type="x-shader/x-vertex">
+        uniform vec3 lightpos;
+        varying float ndotl;
+        varying vec3 lightdir;
+        varying vec3 eyenorm;
+        varying vec2 vUv;
+      
+        void main() {
+            gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
+            vUv = uv;
+            //vec4 worldpos = modelMatrix * vec4 (position, 1.0);
+            //ndotl = dot (normalize(lightpos.xyz - worldpos.xyz), normal);
+            vec4 eyepos = modelViewMatrix * vec4 (position, 1.0);
+            vec4 lighteye = viewMatrix * vec4 (lightpos, 1.0);
+            lightdir = lighteye.xyz - eyepos.xyz;
+            eyenorm = normalMatrix * normal;
+        }
+    </script>
+    <script id="toonFragmentShader" type="x-shader/x-fragment">
+        varying float ndotl;
+        varying vec3 lightdir;
+        varying vec3 eyenorm;
+        uniform sampler2D mytex;
+        varying vec2 vUv;
+        uniform vec3 uniColor;
+
+        void main() {
+            float nn = dot (normalize(lightdir), normalize(eyenorm));
+            if (nn > 0.8) {
+                nn= 1.0;
+            } else if (nn > 0.6) {
+                nn = 0.6;
+            } else {
+                nn = 0.2;
+            }
+
+            // vec4 texColor = texture2D (mytex, vUv);
+            // gl_FragColor = nn*texColor;
+
+            gl_FragColor = vec4 (nn *uniColor, 1.0);
+        }
+    </script>
+    <!--teapotShader-end-->
+
+    <!--perlin-shader-->
+    <script id='perlin-vs' type="x-shader/x-vertex">
+        varying vec4 wPos;
+        varying vec2 vUv;
+        uniform vec2 scale;
+        uniform vec2 offset;
+    
+        void main() {
+            vUv = uv * scale + offset;
+            wPos = modelMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    </script>
+    <script id='perlin-fs' type="x-shader/x-vertex">
+        //
+        // FROM: http://jsfiddle.net/jmchen/cby3d1ag/
+        //
+        vec3 mod289(vec3 x) {
+            return x - floor(x * (1.0 / 289.0)) * 289.0;
+        }
+    
+        vec4 mod289(vec4 x) {
+            return x - floor(x * (1.0 / 289.0)) * 289.0;
+        }
+    
+        vec4 permute(vec4 x) {
+            return mod289(((x * 34.0) + 1.0) * x);
+        }
+    
+        vec4 taylorInvSqrt(vec4 r) {
+            return 1.79284291400159 - 0.85373472095314 * r;
+        }
+    
+        float snoise(vec3 v) {
+            const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+            const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    
+            // First corner
+            vec3 i = floor(v + dot(v, C.yyy));
+            vec3 x0 = v - i + dot(i, C.xxx);
+    
+            // Other corners
+            vec3 g = step(x0.yzx, x0.xyz);
+            vec3 l = 1.0 - g;
+            vec3 i1 = min(g.xyz, l.zxy);
+            vec3 i2 = max(g.xyz, l.zxy);
+    
+            //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+            //   x1 = x0 - i1  + 1.0 * C.xxx;
+            //   x2 = x0 - i2  + 2.0 * C.xxx;
+            //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+            vec3 x1 = x0 - i1 + C.xxx;
+            vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+            vec3 x3 = x0 - D.yyy; // -1.0+3.0*C.x = -0.5 = -D.y
+    
+            // Permutations
+            i = mod289(i);
+            vec4 p = permute(permute(permute(
+            i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0)) + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+    
+            // Gradients: 7x7 points over a square, mapped onto an octahedron.
+            // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+            float n_ = 0.142857142857; // 1.0/7.0
+            vec3 ns = n_ * D.wyz - D.xzx;
+    
+            vec4 j = p - 49.0 * floor(p * ns.z * ns.z); //  mod(p,7*7)
+    
+            vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_); // mod(j,N)
+    
+            vec4 x = x_ * ns.x + ns.yyyy;
+            vec4 y = y_ * ns.x + ns.yyyy;
+            vec4 h = 1.0 - abs(x) - abs(y);
+    
+            vec4 b0 = vec4(x.xy, y.xy);
+            vec4 b1 = vec4(x.zw, y.zw);
+    
+            //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+            //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+            vec4 s0 = floor(b0) * 2.0 + 1.0;
+            vec4 s1 = floor(b1) * 2.0 + 1.0;
+            vec4 sh = -step(h, vec4(0.0));
+    
+            vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+            vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+    
+            vec3 p0 = vec3(a0.xy, h.x);
+            vec3 p1 = vec3(a0.zw, h.y);
+            vec3 p2 = vec3(a1.xy, h.z);
+            vec3 p3 = vec3(a1.zw, h.w);
+    
+            //Normalise gradients
+            vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+            p0 *= norm.x;
+            p1 *= norm.y;
+            p2 *= norm.z;
+            p3 *= norm.w;
+    
+            // Mix final noise value
+            vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+            m = m * m;
+            return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1),
+            dot(p2, x2), dot(p3, x3)));
+        }
+    
+        uniform int terms;
+        uniform int use2D;
+        uniform float time;
+        varying vec2 vUv;
+        varying vec4 wPos;
+        
+        //取得alphaMap
+        uniform sampler2D mask;
+
+        float surface3(vec3 coord) {
+            float height = 0.0;
+            height += abs(snoise(coord)) * 1.0;
+            if (terms >= 2)    
+                height += abs(snoise(coord * 2.0)) * 0.5;
+            if (terms >= 3)
+                height += abs(snoise(coord * 4.0)) * 0.25;
+            if (terms >= 4)
+                height += abs(snoise(coord * 8.0)) * 0.125;
+            // can add more terms ...
+            if (terms >= 5)   
+                 height += abs(snoise(coord * 16.0)) * 0.0625;
+            return height;
+        }
+    
+        void main() {
+            float scale = 1.0;
+            vec3 coord = vec3(scale * vUv[0], scale * vUv[1], time);
+            float height = surface3(coord);
+    
+            float r;
+            r = height;
+
+            //找透明區塊
+            vec4 texColor = texture2D (mask, vUv);
+            if(texColor.a < 0.5){
+                gl_FragColor = vec4(r*0.3, r*0.4, r*0.5, 1.0) * 1.2;
+            }else{
+                gl_FragColor = vec4(r*0.97, r*0.9, r*0.87, 0.5) * 1.2;
+            }
+        }
+    </script>
+    <!--perlin-shader-->
+    <script type='module'>
+        //debug used, don't load model
+        var debug = false;
         $("#navbar").hide();
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
+        import { readModel } from './vendor/js/vendor.js';
+        import { loadMiku, createDesk, createPenBox, createWall, buildModel, miku, mikuPoseHelper, mikuObj } from './vendor/js/hw6.js';
         //必要全域變數
         //場景有三個，灰色的、影像處理的與彩色的
         var sceneGrey, scene0, sceneColor;
         //攝影機有兩台，一台照實際場景，另一台只照上了tenderTarget的板子
         var camera, camera0, renderer;
+
+        //茶壺用
+        var teapot, teapotClone, planeXX;
         //1
         var scene1, camera1;
         //RTT
@@ -343,7 +550,7 @@
         //regular
         var sceneRegular, renderTarget_whole;
 
-        //painting Used
+        //海報用
         var shaderMaterialNormal;
         var texSwapRenderTarget, sceneTexSwap, cameraTexSwap, which = 0;
         var sceneSobel, sobelRenderTarget, cameraSobel;
@@ -351,8 +558,11 @@
         //point light
         var pLight, pAngle = 0, r = 1;
 
-        //debug used, don't load model
-        var debug = false;
+        //miku
+        var renderTargetMosaic, sceneMosaic, materialMosaic, cameraMosaic;
+
+        //招牌
+        var sign, clock;
 
         //歐逼康輟
         var controls;
@@ -365,7 +575,6 @@
         var loadFinish = false;
         var objNameList = [];
         var teapot;
-        var scPLight;
 
         init();
         animate();
@@ -387,9 +596,10 @@
                 80,
                 width / height,
                 1,
-                1000);
-            camera.position.set(0, 80, -100);
-
+                1000
+            );
+            camera.position.set(0, 115, -70);
+            window.camera = camera;
             ////////////////////////////////////////////////////////////////////////
             sceneTexSwapInit();
             sceneSobelInit();
@@ -400,15 +610,23 @@
             sceneRTTInit();
             sceneRegularInit();
 
-            greySceneInit();
+            sceneGreyInit();
             scene0Init();
-            colorSceneInit();
+            seneColorInit();
 
+            sceneMosaicInit();
             //歐逼康啜
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.name = 'controls';
             // 禁用方向鍵調整歐逼康輟位置
             controls.enableKeys = false;
+
+            window.addEventListener('resize', (function onWindowResize() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            }), false);
         }
 
         function sceneTexSwapInit() {
@@ -439,7 +657,7 @@
 
             let loader = new THREE.TextureLoader();
             loader.crossOrigin = '';
-            let myface = '/vendor/textures/myface.png';
+            let myface = './vendor/textures/myface.png';
             let texture = loader.load(myface, function (tex) {
                 texture.wrapS = THREE.RepeatWrapping;
                 console.log(tex.image.width + ', ' + tex.image.height);
@@ -475,7 +693,7 @@
 
             var vertShader = document.getElementById('vs-sobel').textContent;
             var fragShader = document.getElementById('fs-sobel').textContent;
-            material_shader = new THREE.ShaderMaterial({
+            let material_shader = new THREE.ShaderMaterial({
                 uniforms: uniforms,
                 vertexShader: vertShader,
                 fragmentShader: fragShader,
@@ -488,7 +706,7 @@
             sobelRenderTarget = new THREE.WebGLRenderTarget(fWidth, fHeight);
         }
 
-        function greySceneInit() {
+        function sceneGreyInit() {
             //讓海報有光源做變化
             pLight = new THREE.PointLight(0xffffff, 0.8, 100);
             sceneGrey.add(pLight);
@@ -601,16 +819,6 @@
 
             penBox.position.set(-110, 41, 85);
             sceneGrey.add(penBox);
-            //遊戲畫面rt
-            gameRenderTarget = new THREE.WebGLRenderTarget(width, height);
-            screen = new THREE.Mesh(
-                new THREE.PlaneGeometry(28, 20),
-                new THREE.MeshLambertMaterial({
-                    map: gameRenderTarget.texture
-                })
-            );
-            screen.rotation.y = Math.PI;
-            screen.position.set('')
         }
 
         function scene0Init() {
@@ -620,7 +828,7 @@
             camera0 = new THREE.OrthographicCamera(0, width, height, 0, -10, 100);
             // full-size RT
             renderTarget = new THREE.WebGLRenderTarget(width, height);
-            greyPlane = new THREE.Mesh(
+            let greyPlane = new THREE.Mesh(
                 new THREE.PlaneGeometry(width, height),
                 new THREE.ShaderMaterial({
                     uniforms: {
@@ -643,19 +851,26 @@
             scene0.add(greyPlane);
         }
 
-        function colorSceneInit() {
+        function seneColorInit() {
             sceneColor = new THREE.Scene();
-            cutoutShaderMat = new THREE.ShaderMaterial({
+            let alight = new THREE.AmbientLight(0xffffff);
+            sceneColor.add(alight);
+            let cutoutShaderMat = new THREE.ShaderMaterial({
                 uniforms: {
                     texture: { type: 't', value: renderTarget_whole.texture }
                 },
                 vertexShader: document.getElementById('vsCut').textContent,
                 fragmentShader: document.getElementById('fsCut').textContent
             });
-
+            //虛擬房間的招牌
+            //茶壺
             planeXX = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), cutoutShaderMat);
             planeXX.position.set(-60, 47, 60);
             sceneColor.add(planeXX);
+            loadMiku(sceneColor);
+            //招牌相關
+            clock = new THREE.Clock();
+            createSign();
         }
 
         function scene1Init() {
@@ -760,403 +975,44 @@
             mesh.rotation.y = Math.PI / 2;
         }
 
-        function createDesk() {
-            //https://wallpapersafari.com/w/Khy9xa
-            let texture = new THREE.TextureLoader().load('vendor/textures/desk.jpg');
-            let desk = new THREE.Object3D;
-            let desktopmaterial = new THREE.MeshLambertMaterial({
-                map: texture
-            });
-            let cylinderMaterial = new THREE.MeshLambertMaterial({
-                color: 0x664200
-            });
-            let desktop = new THREE.Mesh(new THREE.BoxGeometry(80, 2, 60), desktopmaterial);
-            desktop.position.y = 40;
-            let c1 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
-            let c2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
-            let c3 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
-            let c4 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 40, 30), cylinderMaterial);
-            c1.position.set(35, 20, 25);
-            c2.position.set(35, 20, -25);
-            c3.position.set(-35, 20, -25);
-            c4.position.set(-35, 20, 25);
-            desk.add(desktop, c1, c2, c3, c4);
-            desk.traverse(function (obj) {
-                obj.castShadow = true;
-                obj.receiveShadow = true;
-            });
-            return desk;
-        }
-
-        function createWall(rotation, width = 300, height = 200) {
-            let wall = new THREE.Mesh(
-                new THREE.BoxGeometry(2, height, width),
-                new THREE.MeshLambertMaterial({
-                    color: 'beige'
-                })
-            );
-            wall.position.y = height / 2;
-            if (rotation) {
-                wall.rotation.y = Math.PI / 2;
-
-            }
-            wall.receiveShadow = true;
-            return wall;
-        }
-
-        function createPenBox() {
-            let penBox = new THREE.Object3D();
-            let texture = new THREE.TextureLoader().load('vendor/textures/woodcutout.png')
-            let material = new THREE.MeshPhongMaterial({ side: THREE.DoubleSide, map: texture, alphaTest: 0.5 });
-            let f1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 8, 6.05), material);
-            let f2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 8, 6.05), material);
-            let f3 = new THREE.Mesh(new THREE.BoxGeometry(6.05, 8, 0.05), material);
-            let f4 = new THREE.Mesh(new THREE.BoxGeometry(6.05, 8, 0.05), material);
-            let f5 = new THREE.Mesh(new THREE.BoxGeometry(6, 0.05, 6), material);
-            f1.position.set(3, 4, 0);
-            f2.position.set(-3, 4, 0);
-            f3.position.set(0, 4, 3);
-            f4.position.set(0, 4, -3);
-            penBox.add(f1, f2, f3, f4, f5);
-            penBox.traverse(function (obj) {
-                obj.castShadow = true;
-                obj.receiveShadow = true;
-            });
-            return penBox;
-        }
-
-        function createFace(one, two, three, index = 0) {
-            let face = new THREE.Face3(one, two, three);
-            face.materialIndex = index;
-            return face;
-        }
-
-        function createTextureMaterial(map, alphaTest = 1) {
-            //用Lambert，新鮮屋弄上油墨，不太反光ㄉ
-            let material = new THREE.MeshLambertMaterial({
-                map: map,
-                alphaTest: alphaTest
-            });
-            return material;
-        }
-
-        function buildModel() {
-            let geometry = new THREE.Geometry();
-            //斜邊高度
-            let sq375 = Math.sqrt(3.75);
-
-            //放入頂點
-            geometry.vertices.push(new THREE.Vector3(-3.5, 0, 3.5));
-            geometry.vertices.push(new THREE.Vector3(3.5, 0, 3.5));
-            geometry.vertices.push(new THREE.Vector3(3.5, 10.5, 3.5));
-            geometry.vertices.push(new THREE.Vector3(3.5, 10.5 + sq375, 0));
-            geometry.vertices.push(new THREE.Vector3(-3.5, 10.5 + sq375, 0));
-            geometry.vertices.push(new THREE.Vector3(-3.5, 10.5, 3.5));
-
-            geometry.vertices.push(new THREE.Vector3(-3.5, 0, -3.5));
-            geometry.vertices.push(new THREE.Vector3(3.5, 0, -3.5));
-            geometry.vertices.push(new THREE.Vector3(3.5, 10.5, -3.5));
-            geometry.vertices.push(new THREE.Vector3(-3.5, 10.5, -3.5));
-
-            //中間一點讓兩邊可以上三角形做開喝飲料的位置
-            geometry.vertices.push(new THREE.Vector3(0, 10.5 + sq375, 0));
-
-            //最上面一條橫條黏膠的部分
-            geometry.vertices.push(new THREE.Vector3(3.5, 10.5 + sq375 + 1.5, 0));
-            geometry.vertices.push(new THREE.Vector3(-3.5, 10.5 + sq375 + 1.5, 0));
-
-            //正面
-            geometry.faces.push(createFace(0, 1, 2));
-            geometry.faces.push(createFace(0, 2, 5));
-
-            //背面
-            geometry.faces.push(createFace(7, 6, 9));
-            geometry.faces.push(createFace(7, 9, 8));
-
-            //右面
-            geometry.faces.push(createFace(1, 7, 8));
-            geometry.faces.push(createFace(1, 8, 2));
-
-            //左面
-            geometry.faces.push(createFace(6, 0, 5));
-            geometry.faces.push(createFace(6, 5, 9));
-
-            //正面斜邊
-            geometry.faces.push(createFace(5, 2, 3));
-            geometry.faces.push(createFace(5, 3, 4));
-
-            //背面斜邊
-            geometry.faces.push(createFace(8, 9, 4));
-            geometry.faces.push(createFace(8, 4, 3));
-
-            //上面橫條
-            geometry.faces.push(createFace(4, 3, 11));
-            geometry.faces.push(createFace(4, 11, 12));
-            //上面橫條後面
-            geometry.faces.push(createFace(3, 4, 12));
-            geometry.faces.push(createFace(3, 12, 11));
-
-            /*----右面折進去的的三面，同一面----*/
-            //靠前的背對的面
-            geometry.faces.push(createFace(2, 10, 3));
-            //中間的面
-            geometry.faces.push(createFace(2, 8, 10));
-            // //靠後的正對的面
-            geometry.faces.push(createFace(8, 3, 10));
-
-            /*----左面折進去的的三面，同一面----*/
-            //靠後的正對的面
-            geometry.faces.push(createFace(9, 10, 4));
-            //中間的面
-            geometry.faces.push(createFace(9, 5, 10));
-            //靠前的背對的面
-            geometry.faces.push(createFace(5, 4, 10));
-
-            //底部
-            geometry.faces.push(createFace(6, 7, 1));
-            geometry.faces.push(createFace(6, 1, 0));
-
-            //上材質
-            //材質高度幾分之幾
-            let h1 = 1035 / 1600;/*1035/1600 底部到斜邊*/
-            let h2 = 1445 / 1600;/*1445/1600 斜邊到封條下*/
-            let h3 = 7 / 16;/* 底下的正方形*/
-            //正面
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0, 0),
-                new THREE.Vector2(0.2, 0),
-                new THREE.Vector2(0.2, h1)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0, 0),
-                new THREE.Vector2(0.2, h1),
-                new THREE.Vector2(0, h1)
-            ]);
-            //背面
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.4, 0),
-                new THREE.Vector2(0.6, 0),
-                new THREE.Vector2(0.6, h1)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.4, 0),
-                new THREE.Vector2(0.6, h1),
-                new THREE.Vector2(0.4, h1)
-            ]);
-            //右面
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.2, 0),
-                new THREE.Vector2(0.4, 0),
-                new THREE.Vector2(0.4, h1)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.2, 0),
-                new THREE.Vector2(0.4, h1),
-                new THREE.Vector2(0.2, h1)
-            ]);
-            //左面
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.6, 0),
-                new THREE.Vector2(0.8, 0),
-                new THREE.Vector2(0.8, h1)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.6, 0),
-                new THREE.Vector2(0.8, h1),
-                new THREE.Vector2(0.6, h1)
-            ]);
-            //正面斜邊
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0, h1),
-                new THREE.Vector2(0.2, h1),
-                new THREE.Vector2(0.2, h2)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0, h1),
-                new THREE.Vector2(0.2, h2),
-                new THREE.Vector2(0, h2)
-            ]);
-            //背面斜邊
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.4, h1),
-                new THREE.Vector2(0.6, h1),
-                new THREE.Vector2(0.6, h2)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.4, h1),
-                new THREE.Vector2(0.6, h2),
-                new THREE.Vector2(0.4, h2)
-            ]);
-            //上面橫條正面
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0, h2),
-                new THREE.Vector2(0.2, h2),
-                new THREE.Vector2(0.2, 1)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0, h2),
-                new THREE.Vector2(0.2, 1),
-                new THREE.Vector2(0, 1)
-            ]);
-            //上面橫條後面
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.4, h2),
-                new THREE.Vector2(0.6, h2),
-                new THREE.Vector2(0.6, 1)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.4, h2),
-                new THREE.Vector2(0.6, 1),
-                new THREE.Vector2(0.4, 1)
-            ]);
-            //右邊內凹
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.2, h1),
-                new THREE.Vector2(0.3, h2),
-                new THREE.Vector2(0.2, h2)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.2, h1),
-                new THREE.Vector2(0.4, h1),
-                new THREE.Vector2(0.3, h2)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.4, h1),
-                new THREE.Vector2(0.4, h2),
-                new THREE.Vector2(0.3, h2)
-            ]);
-            //左邊內凹
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.6, h1),
-                new THREE.Vector2(0.7, h2),
-                new THREE.Vector2(0.6, h2)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.6, h1),
-                new THREE.Vector2(0.8, h1),
-                new THREE.Vector2(0.7, h2)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.8, h1),
-                new THREE.Vector2(0.8, h2),
-                new THREE.Vector2(0.7, h2)
-            ]);
-            //底部
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.8, 0),
-                new THREE.Vector2(1, 0),
-                new THREE.Vector2(1, h3)
-            ]);
-            geometry.faceVertexUvs[0].push([
-                new THREE.Vector2(0.8, 0),
-                new THREE.Vector2(1, h3),
-                new THREE.Vector2(0.8, h3)
-            ]);
-            //要先計算Face然後再計算頂點，這樣才能知道要光源要怎計算
-            geometry.computeFaceNormals();
-            geometry.computeVertexNormals();
-
-            let loader = new THREE.TextureLoader();
-            loader.crossOrigin = '';
-            let mergeTexture = loader.load('vendor/textures/TryItTea/tryittea.png');
-            materialArray = [];
-            materialArray.push(
-                createTextureMaterial(mergeTexture, 0.5)
-            );
-            return new THREE.Mesh(geometry, materialArray);
-        }
-
-        function readModel(modelName, objName = 'OBJ', targetSize = 40, parent, turn = undefined, mtlName = undefined) {
-            var onProgress = function (xhr) {
-                if (xhr.lengthComputable) {
-                    var percentComplete = xhr.loaded / xhr.total * 100;
-                    console.log(Math.round(percentComplete, 2) + '% downloaded');
+        function sceneMosaicInit() {
+            sceneMosaic = new THREE.Scene();
+            renderTargetMosaic = new THREE.WebGLRenderTarget(width, height);//256,256); 
+            var uniforms = {
+                headNDC: {
+                    type: 'v2',
+                    value: null
+                },
+                headSize: {
+                    type: 'f',
+                    value: 0
+                },
+                texture: {
+                    type: 't',
+                    value: renderTargetMosaic.texture
+                },
+                gran: {
+                    type: 'f',
+                    value: 0
+                },
+                front: {
+                    type: 'b',
+                    value: false
                 }
             };
 
-            var onError = function (xhr) { };
-
-            var mtlLoader = new THREE.MTLLoader();
-
-            let mtl = modelName;
-            if (mtlName !== undefined) {
-                mtl = mtlName;
-            }
-            mtlLoader.setPath('vendor/models/' + modelName + '/');
-            mtlLoader.load(mtl + '.mtl', function (materials) {
-
-                materials.preload();
-
-                var objLoader = new THREE.OBJLoader();
-                objLoader.setMaterials(materials);
-                objLoader.setPath('vendor/models/' + modelName + '/');
-                objLoader.load(modelName + '.obj', function (object) {
-                    console.log("model name:" + modelName);
-                    theObject = unitize(object, targetSize);
-                    // theObject.add(new THREE.BoxHelper(theObject));
-                    theObject.name = objName;
-                    theObject.traverse(function (object) {
-                        if (object instanceof THREE.Mesh) {
-                            object.castShadow = true
-                            object.receiveShadow = true
-                        }
-                    })
-                    //把這個model放入父層
-                    parent.add(theObject);
-                    //不須改變軸的方向
-                    if (turn !== undefined) {
-                        if (turn.toUpperCase() == 'X') {
-                            theObject.setRotationFromEuler(new THREE.Euler(Math.PI / 2, 0, 0))
-                            console.log("----" + modelName + ' to turn ' + turn);
-                        }
-                        else if (turn.toUpperCase() == 'Y') {
-                            theObject.setRotationFromEuler(new THREE.Euler(0, Math.PI / 2, 0))
-                            console.log("----" + modelName + ' to turn ' + turn);
-                        }
-                        else if (turn.toUpperCase() == 'Z') {
-                            theObject.setRotationFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
-                            console.log("----" + modelName + ' to turn ' + turn);
-                        }
-                    }
-                }, onProgress, onError);
-
+            var vertShader = document.getElementById('vs-mosaic').innerHTML;
+            var fragShader = document.getElementById('fs-mosaic').innerHTML;
+            materialMosaic = new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: vertShader,
+                fragmentShader: fragShader
             });
-        }
-
-        ////////////////////////////////////////
-        // wrap an Object3D around the given object
-        // so that it is centered at +Y axis
-        //
-        function unitize(object, targetSize) {
-
-            // find bounding box of 'object'
-            var box3 = new THREE.Box3();
-            box3.setFromObject(object);
-            var size = new THREE.Vector3();
-            size.subVectors(box3.max, box3.min);
-            var center = new THREE.Vector3();
-            center.addVectors(box3.max, box3.min).multiplyScalar(0.5);
-            console.log('center: ' + center.x + ', ' + center.y + ', ' + center.z);
-            console.log('size: ' + size.x + ', ' + size.y + ', ' + size.z);
-
-            // uniform scaling according to objSize
-            var objSize = Math.max(size.x, size.y, size.z);
-            var scaleSet = targetSize / objSize;
-            var theObject = new THREE.Object3D();
-            theObject.add(object);
-            object.scale.set(scaleSet, scaleSet, scaleSet);
-            object.position.set(-center.x * scaleSet, 0, -center.z * scaleSet);
-
-            object.rotation.y = Math.PI / 2;
-
-            // let axis = new THREE.AxesHelper(10);
-            // theObject.add(axis);
-
-            //get now size
-
-            // carSize = size.multiplyScalar(scaleSet);
-
-            return theObject;
+            //設為跟螢幕一樣大
+            let mosaicPlane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), materialMosaic);
+            //照mosaicPlane的
+            cameraMosaic = new THREE.OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, -500, 1000);
+            sceneMosaic.add(mosaicPlane);
         }
 
         function animate() {
@@ -1167,6 +1023,8 @@
                         isOK = false;
                     }
                 });
+                //如果miku也沒有load進來
+                if (mikuObj === undefined) isOK = false;
                 if (isOK) {
                     //loading結束
                     document.getElementById("loading").style.display = "none";
@@ -1176,17 +1034,22 @@
                     if (!debug) initPosition();
                     //初始化完畢
                     loadFinish = !loadFinish;
+                    window.miku = miku;
                 }
             } else {
+                var delta = clock.getDelta();
+                // window.sign = sign
+                if (delta != 0)
+                    sign.material.uniforms.time.value += delta / 15;
+                headCompute();
                 render();
-                // turnPointLight(scPLight, new THREE.Vector3(-60, 80, 60), 30, 0.02);
             }
             requestAnimationFrame(animate);
             if (Math.abs(pAngle) > Math.PI / 2) r = -r;
             pAngle += 0.01 * r;
-            pLight.position.set(-123 + Math.cos(pAngle) * 20, 60, -10 + Math.sin(pAngle) * 20);
-            shaderMaterialNormal.uniforms.lightpos.value.copy(pLight.position);
-            console.log(pLight.position.x);
+            let v3 = new THREE.Vector3(-123 + Math.cos(pAngle) * 20, 60, -10 + Math.sin(pAngle) * 20);
+            pLight.position.copy(v3);
+            shaderMaterialNormal.uniforms.lightpos.value.copy(v3);
         }
 
         function initPosition() {
@@ -1252,7 +1115,7 @@
             // overlay the lit torusKnot
             renderer.render(sceneRegular, camera1); // camera0: the same as eyeNormal plot
 
-            ///////// final texture completed (except boundary removal)  
+            ///////// final texture completed (except boundary removal)
             let pz = new THREE.Vector3(0, 0, 1);
             let py = new THREE.Vector3(0, 1, 0);
             let point = camera.position.clone().sub(planeXX.position).projectOnPlane(py);
@@ -1265,10 +1128,8 @@
             teapotClone.rotation.y = angle;
             planeXX.lookAt(camera.position.x, 47, camera.position.z);
 
-            //換去渲染螢幕
-            renderer.setRenderTarget(null);
-
-            // renderer.clearColor();
+            //從渲染螢幕改為渲染成要處理馬賽克的RT
+            renderer.setRenderTarget(renderTargetMosaic);
             //渲染板子出來
             renderer.render(scene0, camera0);
 
@@ -1287,9 +1148,16 @@
             renderer.render(sceneGrey, camera);
 
             renderer.render(sceneColor, camera);
+            //再來去渲染螢幕
+            renderer.setRenderTarget(null);
+            renderer.render(sceneMosaic, cameraMosaic);
+
+            //要清空原本的
             renderer.setRenderTarget(renderTarget1);
             renderer.clear();
             renderer.setRenderTarget(renderTarget_whole);
+            renderer.clear();
+            renderer.setRenderTarget(renderTargetMosaic);
             renderer.clear();
         }
 
@@ -1298,6 +1166,74 @@
             renderer.render(sceneTexSwap, cameraTexSwap);
             renderer.setRenderTarget(sobelRenderTarget);
             renderer.render(sceneSobel, cameraSobel);
+        }
+
+        function headCompute() {
+            // compute headNDC
+            //人頭正中心
+            var headCenter = new THREE.Vector3(6, 68, 18.3);
+            miku.localToWorld(headCenter);
+            //頭頂，設一個高處
+            var headTop = new THREE.Vector3(6, 70, 18.3);
+            miku.localToWorld(headTop);
+            //找到鼻子在物件中的位置
+            //我原本找10.5,67.3,17.3
+            //可是人頭比較往下看，所以要在往更前面找
+            var noseTip = new THREE.Vector3(10.5, 68, 17.3);
+            miku.localToWorld(noseTip);
+
+            //找到頭中心點、鼻子和頭頂的gl_position
+            headCenter.applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+            //頭的標準化設備座標(x,y)
+            //要+1/2是因為NDC是從0~1，而headCenter原本是-1~1
+            materialMosaic.uniforms.headNDC.value = new THREE.Vector2((headCenter.x + 1) / 2, (headCenter.y + 1) / 2);
+            noseTip.applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+            headTop.applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+            //往正z方向是越靠前，所以鼻子的z比頭中心的z近，則是看的到臉惹
+            //上面這句話跟我的code有衝突QQ
+            //clip的x跟y如果超過螢幕(絕對值大於1)就不用上馬賽克，怕有些角度會多出不該有的馬賽克處理
+            if (noseTip.z - headCenter.z < 0 && Math.abs(headCenter.x) <= 1 && Math.abs(headCenter.y) <= 1)
+                materialMosaic.uniforms.front.value = true;
+            else
+                materialMosaic.uniforms.front.value = false;
+            materialMosaic.uniforms.gran.value = 0.01;
+            //除以2是為了座標轉換，距離剩一半，本來-1~1剩下0~1
+            materialMosaic.uniforms.headSize.value = 1.8 * headTop.distanceTo(headCenter) / 2;
+        }
+
+        function createSign() {
+            let tex = new THREE.TextureLoader().load('./vendor/textures/room_sign.png');
+            let material = new THREE.ShaderMaterial({
+                // side: THREE.DoubleSide,
+                uniforms: {
+                    terms: {
+                        type: 'i',
+                        value: 5
+                    },
+                    time: {
+                        type: 'f',
+                        value: 1.0
+                    },
+                    scale: {
+                        type: 'v2',
+                        value: new THREE.Vector2(1, 1)
+                    },
+                    offset: {
+                        type: 'v2',
+                        value: new THREE.Vector2(0, 0)
+                    },
+                    mask: {
+                        type: 't',
+                        value: tex
+                    }
+                },
+                vertexShader: document.getElementById('perlin-vs').textContent,
+                fragmentShader: document.getElementById('perlin-fs').textContent,
+            });
+            sign = new THREE.Mesh(new THREE.PlaneGeometry(100, 50), material);
+            sign.position.set(-5, 120, 98);
+            sign.rotation.y = Math.PI;
+            sceneColor.add(sign);
         }
     </script>
 </body>
