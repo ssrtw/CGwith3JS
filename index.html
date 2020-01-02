@@ -67,57 +67,72 @@
             </div>
             <div class="card col-md-6">
                 <div class="infoImg">
-                    <img style="padding:20px;" data-src="hw5-1.gif" class="card-img-top lazy">
+                    <div class="embed-responsive embed-responsive-16by9">
+                        <iframe width="560" height="315" src="https://www.youtube.com/embed/nAb0-4gZCzk" frameborder="0"
+                            allow="encrypted-media" allowfullscreen>
+                        </iframe>
+                    </div>
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 5-1</h5>
                     <p class="card-text">Basic GLSL</p>
                     <a href="hw5-1.html" class="btn btn-primary">開啟</a>
-                    <button onclick="openBox('hw5-1')" class="btn btn-info">大圖</a>
                 </div>
             </div>
             <div class="card col-md-6">
                 <div class="infoImg">
-                    <img style="padding:20px;" data-src="hw4.gif" class="card-img-top lazy">
+                    <div class="embed-responsive embed-responsive-16by9">
+                        <iframe width="560" height="315" src="https://www.youtube.com/embed/0S8pkjAEauM" frameborder="0"
+                            allow="encrypted-media" allowfullscreen>
+                        </iframe>
+                    </div>
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 4</h5>
                     <p class="card-text">Class, Raycaster, Shadow Map</p>
                     <a href="hw4.html" class="btn btn-primary">開啟</a>
-                    <button onclick="openBox('hw4')" class="btn btn-info">大圖</a>
                 </div>
             </div>
             <div class="card col-md-6">
                 <div class="infoImg">
-                    <img style="padding:20px;" data-src="hw3.gif" class="card-img-top lazy">
+                    <div class="embed-responsive embed-responsive-16by9">
+                        <iframe width="560" height="315" src="https://www.youtube.com/embed/Y1K90FxhAXc" frameborder="0"
+                            allow="encrypted-media" allowfullscreen>
+                        </iframe>
+                    </div>
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 3</h5>
                     <p class="card-text">OBJ loader, drive, collision</p>
                     <a href="hw3.html" class="btn btn-primary">開啟</a>
-                    <button onclick="openBox('hw3')" class="btn btn-info">大圖</a>
                 </div>
             </div>
             <div class="card col-md-6">
                 <div class="infoImg">
-                    <img style="padding:20px;" data-src="hw2.gif" class="card-img-top lazy">
+                    <div class="embed-responsive embed-responsive-16by9">
+                        <iframe width="560" height="315" src="https://www.youtube.com/embed/HRSKYZy1glg" frameborder="0"
+                            allow="encrypted-media" allowfullscreen>
+                        </iframe>
+                    </div>
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 2</h5>
                     <p class="card-text">Hierarchical Model</p>
                     <a href="hw2.html" class="btn btn-primary">開啟</a>
-                    <button onclick="openBox('hw2')" class="btn btn-info">大圖</a>
                 </div>
             </div>
             <div class="card col-md-6">
                 <div class="infoImg">
-                    <img style="padding:20px;" data-src="hw1.gif" class="card-img-top lazy">
+                    <div class="embed-responsive embed-responsive-16by9">
+                        <iframe width="560" height="315" src="https://www.youtube.com/embed/sTxYs4dRVAY" frameborder="0"
+                            allow="encrypted-media" allowfullscreen>
+                        </iframe>
+                    </div>
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">Homework 1</h5>
                     <p class="card-text">time-based animation</p>
                     <a href="hw1.html" class="btn btn-primary">開啟</a>
-                    <button onclick="openBox('hw1')" class="btn btn-info">大圖</a>
                 </div>
             </div>
         </div>
@@ -135,33 +150,6 @@
             </p>
         </footer>
     </div>
-    <!-- gif燈箱 -->
-    <div class="modal fade bd-example-modal-xl" id="lightBox" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div id="gifBox" class="modal-body">
-                </div>
-            </div>
-        </div>
-    </div>
-    <script>
-        $("img").lazyload();
-        $('#lightBox').on('hide.bs.modal', function (e) {
-            setTimeout(() => {
-                $('#gifBox').empty();
-            }, 200);
-        })
-
-        function openBox(name) {
-            $('#gifBox').append('<img style="padding:20px;" src="' + name + '.gif" class="card-img-top">');
-            $('#lightBox').modal('show');
-        }
-    </script>
 </body>
 
 </html>

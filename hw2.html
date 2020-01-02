@@ -11,7 +11,6 @@
             margin-left: auto;
             margin-right: auto;
             display: block;
-            width: 800px;
         }
 
         /* 增加button間距 */
@@ -34,6 +33,12 @@
                 <span class="text-white nav-text">
                     仰角：<span id="angle">0.00</span>度
                 </span>
+                <!-- 作業說明按鈕 -->
+                <div id="navbtn">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#descriptionModal">
+                        Info
+                    </button>
+                </div>
             </div>
             <div id="navbtn">
                 <button id="newTargetBtn" class="btn btn-primary">產生標靶</button>
@@ -42,15 +47,40 @@
         </div>
     </nav>
     <div id="canvas"></div>
-    <script src="vendor/js/jquery-3.3.1.min.js"></script>
-    <script src="vendor/js/bootstrap.min.js"></script>
-    <script src="vendor/js/KeyboardState.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
-    <script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+    <!-- 作業說明彈跳視窗 -->
+    <div class="modal fade" id="descriptionModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">作業說明</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    A:左轉 W:前進 S:後退 D:右轉<br>
+                    Space:發射砲彈 Shift:加快坦克行進速度<br>
+                    J:砲台左轉 I:砲管上升 K:砲管下降 S:砲管右轉<br>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./vendor/js/jquery-3.3.1.min.js"></script>
+    <script src="./vendor/js/bootstrap.min.js"></script>
+    <script src="./vendor/js/KeyboardState.js"></script>
+    <script src="./vendor/js/three.min.js"></script>
+    <script src="./vendor/js/OrbitControls.js">
     </script>
     <script>
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
+        var width = window.innerWidth * 0.9;
+        var height = window.innerHeight * 0.9;
+        $("#canvas").width(width);
+        $("#canvas").height(height);
         //必要全域變數
         var scene, camera, renderer;
         //一個clock計算砲彈的拋物線deltaT
@@ -141,8 +171,6 @@
             //弄一個外圍場景
             let cubeMap = loadCubemap();
             scene.background = cubeMap;
-            let width = 800;
-            let height = 600;
             renderer = new THREE.WebGLRenderer();
             renderer.setSize(width, height);
             renderer.setClearColor('white');
@@ -175,6 +203,8 @@
             scene.add(tank);
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.name = 'controls';
+            // 禁用方向鍵調整歐逼康輟位置
+            controls.enableKeys = false;
             camera.lookAt(scene.position);
             //做一片地板
             //https://www.deviantart.com/hhh316/art/Seamless-desert-sand-texture-183159331
@@ -212,11 +242,16 @@
             dLight.shadow.mapSize.width = dLight.shadow.mapSize.height = 1024;
             scene.add(dLight);
             dLight.shadow.bias = -.01;
-            //顯示輔助框線
-            // dlhelper = new THREE.DirectionalLightHelper(dLight, 5);
-            // scene.add(dlhelper);
-            // dlshelper = new THREE.CameraHelper(dLight.shadow.camera)
-            // scene.add(dlshelper);
+
+            window.addEventListener('resize', (function onWindowResize() {
+                width = window.innerWidth * 0.9;
+                height = window.innerHeight * 0.9;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+                $("#canvas").width(width);
+                $("#canvas").height(height);
+            }), false);
         }
 
         function loadCubemap() {

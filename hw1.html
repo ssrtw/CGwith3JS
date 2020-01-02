@@ -44,10 +44,10 @@
         </div>
     </nav>
     <div id="canvas"></div>
-    <script src="vendor/js/jquery-3.3.1.min.js"></script>
-    <script src="vendor/js/bootstrap.min.js"></script>
-    <script src="vendor/js/KeyboardState.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
+    <script src="./vendor/js/jquery-3.3.1.min.js"></script>
+    <script src="./vendor/js/bootstrap.min.js"></script>
+    <script src="./vendor/js/KeyboardState.js"></script>
+    <script src="./vendor/js/three.min.js"></script>
     <script>
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
@@ -177,6 +177,16 @@
             secHand.visible = false;
             minHand.visible = false;
             hrHand.visible = false;
+            
+            window.addEventListener('resize', (function onWindowResize() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+                $("#canvas").width(width);
+                $("#canvas").height(height);
+            }), false);
         }
 
         function animate() {

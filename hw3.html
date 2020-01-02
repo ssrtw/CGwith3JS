@@ -39,8 +39,7 @@
             </div>
         </div>
     </nav>
-    <div id="canvas">
-    </div>
+    <div id="canvas"></div>
     <!-- 作業說明彈跳視窗 -->
     <div class="modal fade" id="descriptionModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
@@ -63,25 +62,26 @@
             </div>
         </div>
     </div>
-    <script src="vendor/js/jquery-3.3.1.min.js"></script>
-    <script src="vendor/js/bootstrap.min.js"></script>
-    <script src="https://threejs.org/build/three.min.js"></script>
-    <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
-    <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
-    <script src="vendor/js/KeyboardState.js"></script>
-    <script src="vendor/js/text2D.js"></script>
+    <script src="./vendor/js/jquery-3.3.1.min.js"></script>
+    <script src="./vendor/js/bootstrap.min.js"></script>
+    <script src="./vendor/js/three.min.js"></script>
+    <script src="./vendor/js/MTLLoader.js"></script>
+    <script src="./vendor/js/OBJLoader.js"></script>
+    <script src="./vendor/js/KeyboardState.js"></script>
+    <script src="./vendor/js/text2D.js"></script>
 
     <script>
         //檢查FPS
         javascript: (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })();
-        //threejs必要
-        var scene, camera, renderer, skyCamera;
-        //儀錶板
-        var dashboard, point, kmH;
+        //canvas大小設定
         var width = window.innerWidth * 0.9;
         var height = window.innerHeight * 0.9;
         $("#canvas").width(width);
         $("#canvas").height(height);
+        //threejs必要
+        var scene, camera, renderer, skyCamera;
+        //儀錶板
+        var dashboard, point, kmH;
         //時間差
         var clock;
         //胎痕
@@ -172,7 +172,7 @@
             skyCamera = new THREE.OrthographicCamera(-500, 500, 500, -500, -10, 600);
             skyCamera.position.y = 50;
             skyCamera.up.set(0, 0, -1);
-            skyCamera.lookAt(new THREE.Vector3())
+            skyCamera.lookAt(new THREE.Vector3());
 
             //renderer
             renderer = new THREE.WebGLRenderer();
@@ -185,12 +185,6 @@
             renderer.autoClear = false;
 
             $("#canvas").append(renderer.domElement);
-
-            // //歐逼康啜
-            // controls = new THREE.OrbitControls(camera, renderer.domElement);
-            // controls.name = 'controls';
-            // // 禁用方向鍵調整歐逼康輟位置
-            // controls.enableKeys = false;
 
             //THREE提供的物件(算時間)
             clock = new THREE.Clock();
@@ -237,10 +231,20 @@
             power = 1.0;
             angle = 0.0;
 
-            /**********************************************************************/
-            /**********************************************************************/
-            /**********************************************************************/
+            sceneHUDInit();
 
+            window.addEventListener('resize', (function onWindowResize() {
+                width = window.innerWidth * 0.9;
+                height = window.innerHeight * 0.9;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+                $("#canvas").width(width);
+                $("#canvas").height(height);
+            }), false);
+        }
+
+        function sceneHUDInit() {
             let loader = new THREE.TextureLoader();
             //儀錶板
             sceneHUD = new THREE.Scene();
@@ -646,7 +650,6 @@
         }
 
         function loadCubemap() {
-
             var path = "vendor/textures/cubeMap2/";
             var format = '.png';
             var urls = [
@@ -658,7 +661,6 @@
             var cubeMap = loader.load(urls);
             cubeMap.format = THREE.RGBFormat;
             return cubeMap;
-
         }
 
         function render() {
