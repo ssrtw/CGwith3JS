@@ -22,5 +22,6 @@
  - cutoutTexture
  - gooch
  - matcap
+ - normalmap
 - perlin noise
 - ...
