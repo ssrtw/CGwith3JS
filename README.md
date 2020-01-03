@@ -12,7 +12,6 @@
  - RenderTarget
  - Raycaster
  - ...
-- 力學物理引擎
 - 利用GLSL寫shader(含一些filter)
  - mosaic
  - sobel
