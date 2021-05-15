@@ -1,3 +1,87 @@
+var myVertexShader = `
+    uniform int shading;
+    uniform int coordinate;
+    varying vec3 color;
+    varying vec4 objpos;
+    varying vec4 worldpos;
+    varying vec4 eyepos;
+
+    void perVertexShading(vec3 objpos, vec3 worldpos) {
+        if (coordinate == 0) {
+            //物件座標
+            if (objpos.x > 0.0) 
+                color = vec3 (1,1,1);
+            else
+                color = vec3 (0,0,0);
+        } else if (coordinate == 1) {
+            //世界座標
+            if (worldpos.x > 0.0) 
+                color = vec3 (1,1,1);
+            else
+                color = vec3 (0,0,0);    	
+        } else if (coordinate == 2) {
+            //眼睛座標(直接拿varying變數，於main已經算好)
+            if (eyepos.x > 0.0) 
+                color = vec3 (1,1,1);
+            else
+                color = vec3 (0,0,0);    	
+        }
+    }
+
+    void main() {
+        gl_Position = projectionMatrix* modelViewMatrix * vec4(position, 1.0);
+        objpos = vec4(position, 1.0);
+        worldpos = modelMatrix * vec4(position, 1.0);
+        eyepos = modelViewMatrix * vec4(position, 1.0);
+        if (shading == 0)  // per-vertex shading
+            perVertexShading(position, worldpos.xyz);
+    }
+`;
+
+var myFragmentShader = `
+    uniform int shading;
+    uniform int coordinate;
+    //用頂點上的色
+    varying vec3 color;
+
+    //傳到fragment像素做處理
+    //物件座標
+    varying vec4 objpos;
+    //世界座標
+    varying vec4 worldpos;
+    //眼睛座標
+    varying vec4 eyepos;
+
+    void main() {
+        if(shading==0){
+            //從Vertex下手
+            gl_FragColor = vec4 (color, 1.0);
+        }else{
+            // your homework
+            //perPixelShading移到這裡
+            vec3 fragcolor;
+            //從Pixel下手
+            if (coordinate == 0) {
+                if (objpos.x > 0.0) 
+                    fragcolor = vec3 (1,1,1);
+                else
+                    fragcolor = vec3 (0,0,0);
+            } else if (coordinate == 1) {
+                if (worldpos.x > 0.0) 
+                    fragcolor = vec3 (1,1,1);
+                else
+                    fragcolor = vec3 (0,0,0);    	
+            } else if (coordinate == 2) {
+                if (eyepos.x > 0.0) 
+                    fragcolor = vec3 (1,1,1);
+                else
+                    fragcolor = vec3 (0,0,0);    	
+            }
+            gl_FragColor = vec4 (fragcolor, 1.0);
+        }
+    }
+`;
+
 var vs_toon = `
     uniform vec3 lightpos;
     varying float ndotl;
@@ -119,4 +203,4 @@ var fs_sem = `
     }
 `;
 
-export { vs_gooch, fs_gooch, vs_sem, fs_sem, vs_toon, fs_toon };
+export { myVertexShader, myFragmentShader, vs_gooch, fs_gooch, vs_sem, fs_sem, vs_toon, fs_toon };

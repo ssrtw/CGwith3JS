@@ -3,3 +3,14 @@ body {
     font-family: 'Noto Sans TC', sans-serif;
     background-color: aliceblue;
 }
+
+#canvas {
+    margin: 0 auto;
+    display: block;
+}
+
+/* 增加button間距 */
+
+#navbtn button {
+    margin: 0 10px;
+}

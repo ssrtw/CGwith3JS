@@ -1,0 +1,36 @@
+#info {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    margin: 0 auto;
+    color: #ff0000;
+    font-size: 20px;
+    z-index: 10;
+    padding-top: 2vh;
+}
+
+#info a {
+    font-size: 15px;
+    color: yellow;
+}
+
+#canvas {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+#survive {
+    display: inline;
+}
+
+#loading {
+    z-index: 10;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    margin: 0 auto;
+    color: #ffffff;
+    font-size: 40px;
+}

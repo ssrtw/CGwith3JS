@@ -6,7 +6,7 @@ function onProgress(xhr) {
 }
 
 function readModel(modelName, objName = 'OBJ', targetSize = 40, parent, turn = undefined, mtlName = undefined) {
-    var onError = function(xhr) {};
+    var onError = function (xhr) { };
 
     var mtlLoader = new THREE.MTLLoader();
 
@@ -15,25 +15,25 @@ function readModel(modelName, objName = 'OBJ', targetSize = 40, parent, turn = u
         mtl = mtlName;
     }
     mtlLoader.setPath('vendor/models/' + modelName + '/');
-    mtlLoader.load(mtl + '.mtl', function(materials) {
+    mtlLoader.load(mtl + '.mtl', function (materials) {
 
         materials.preload();
 
         var objLoader = new THREE.OBJLoader();
         objLoader.setMaterials(materials);
         objLoader.setPath('vendor/models/' + modelName + '/');
-        objLoader.load(modelName + '.obj', function(object) {
+        objLoader.load(modelName + '.obj', function (object) {
             console.log("model name:" + modelName);
             let theObject = unitize(object, targetSize);
             // theObject.add(new THREE.BoxHelper(theObject));
             theObject.name = objName;
-            theObject.traverse(function(object) {
-                    if (object instanceof THREE.Mesh) {
-                        object.castShadow = true
-                        object.receiveShadow = true
-                    }
-                })
-                //把這個model放入父層
+            theObject.traverse(function (object) {
+                if (object instanceof THREE.Mesh) {
+                    object.castShadow = true
+                    object.receiveShadow = true
+                }
+            })
+            //把這個model放入父層
             parent.add(theObject);
             //不須改變軸的方向
             if (turn !== undefined) {
@@ -89,4 +89,4 @@ function unitize(object, targetSize) {
     return theObject;
 }
 
-export { unitize, readModel };
+export { unitize, readModel, onProgress };
